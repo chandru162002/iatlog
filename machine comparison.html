@@ -1,0 +1,2413 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Equipment Breakdown & Availability Management System</title>
+    <!-- ExcelJS & FileSaver -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/exceljs/4.3.0/exceljs.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.5/FileSaver.min.js"></script>
+
+    <style>
+        :root {
+            --primary-blue: #1f4e78;
+            --excel-green: #107c41;
+            --border-gray: #d9d9d9;
+            --bg-light: #f4f7f6;
+        }
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            margin: 0;
+            padding: 15px;
+            background-color: var(--bg-light);
+            color: #333;
+            font-size: 13px;
+        }
+        .container { max-width: 100%; margin: 0 auto; }
+        .top-bar {
+            background: #fff;
+            padding: 15px 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 15px;
+            margin-bottom: 15px;
+        }
+        h2 { margin: 0; color: var(--primary-blue); font-size: 20px; }
+        .controls { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+        select, input, button, textarea {
+            padding: 6px 10px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            font-size: 12px;
+        }
+        button { cursor: pointer; font-weight: bold; transition: all 0.2s; }
+        .btn-primary { background-color: var(--primary-blue); color: #fff; border: none; }
+        .btn-primary:hover { background-color: #153450; }
+        .btn-excel { background-color: var(--excel-green); color: #fff; border: none; }
+        .btn-excel:hover { background-color: #0b5a2f; }
+        .btn-save { background-color: #d97706; color: #fff; border: none; }
+        .btn-save:hover { background-color: #b45309; }
+        .btn-email { background-color: #ea4335; color: #fff; border: none; }
+        .btn-email:hover { background-color: #c5221f; }
+        .btn-danger { background-color: #d9534f; color: #fff; border: none; padding: 4px 8px; }
+
+        .nav-tabs { display: flex; gap: 4px; border-bottom: 2px solid #ccc; margin-bottom: 15px; flex-wrap: wrap; }
+        .tab-btn {
+            padding: 10px 18px;
+            background: #e2e8f0;
+            border: none;
+            border-radius: 6px 6px 0 0;
+            font-weight: bold;
+            color: #4a5568;
+        }
+        .tab-btn.active {
+            background: #fff;
+            color: var(--primary-blue);
+            border-top: 3px solid var(--primary-blue);
+        }
+        .tab-content { display: none; background: #fff; padding: 15px; border-radius: 0 0 8px 8px; box-shadow: 0 2px 5px rgba(0,0,0,0.1); }
+        .tab-content.active { display: block; }
+
+        .table-wrap { overflow-x: auto; max-height: 650px; }
+        table { border-collapse: collapse; width: 100%; font-size: 11px; text-align: center; }
+        th, td { border: 1px solid var(--border-gray); padding: 5px; white-space: nowrap; }
+        th { background-color: #f2f2f2; position: sticky; top: 0; z-index: 2; font-weight: bold; }
+        .vertical-date {
+            writing-mode: vertical-rl;
+            transform: rotate(180deg);
+            padding: 8px 2px;
+            height: 75px;
+        }
+
+        .bg-green { background-color: #92D050 !important; font-weight: bold; }
+        .bg-yellow { background-color: #FFFF00 !important; font-weight: bold; }
+        .bg-blue { background-color: #00B0F0 !important; color: white; font-weight: bold; }
+        .bg-orange { background-color: #F8CBAD !important; font-weight: bold; }
+        .bg-red { background-color: #FFC7CE !important; color: #9C0006; font-weight: bold; }
+
+        .modal {
+            display: none; position: fixed; z-index: 100; left: 0; top: 0;
+            width: 100%; height: 100%; background-color: rgba(0,0,0,0.5);
+            justify-content: center; align-items: center;
+        }
+        .modal-content {
+            background: #fff; border-radius: 8px; width: 90%; max-width: 850px;
+            max-height: 90vh; overflow-y: auto; padding: 20px; box-shadow: 0 4px 10px rgba(0,0,0,0.3);
+        }
+        .form-grid {
+            display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 12px; margin-top: 15px;
+        }
+        .form-group { display: flex; flex-direction: column; gap: 4px; text-align: left; }
+        .form-group label { font-weight: bold; font-size: 11px; color: #444; }
+
+        .kpi-table { width: 420px; margin-top: 20px; font-size: 12px; }
+        .kpi-table td { padding: 6px 12px; }
+        .filter-bar { display: flex; gap: 12px; margin-bottom: 12px; align-items: center; background: #f8f9fa; padding: 10px; border-radius: 6px; flex-wrap: wrap; }
+
+        .doc-header-table { width: 100%; margin-bottom: 15px; font-size: 11px; border-collapse: collapse; }
+        .doc-header-table td, .doc-header-table th { border: 1px solid #000; padding: 4px 8px; text-align: center; }
+        .doc-header-title { font-size: 16px; font-weight: bold; letter-spacing: 1px; }
+        .logo-cell { display: flex; align-items: center; justify-content: center; padding: 4px; }
+        .logo-cell img { height: 50px; width: auto; object-fit: contain; }
+        .trend-canvas-container { overflow-x: auto; margin-bottom: 15px; background: #fff; border: 1px solid #000; padding: 10px; }
+        
+        .compare-checkbox-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(210px, 1fr));
+            gap: 6px;
+            width: 100%;
+            max-height: 160px;
+            overflow-y: auto;
+            border: 1px solid #ccc;
+            padding: 10px;
+            background: #fff;
+            border-radius: 4px;
+        }
+        .compare-checkbox-item {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            font-size: 11px;
+            cursor: pointer;
+        }
+        .compare-checkbox-item input { margin: 0; cursor: pointer; }
+
+        .quadrant-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 15px;
+            margin-top: 15px;
+        }
+        .quadrant-card {
+            border: 2px solid #ccc;
+            border-radius: 8px;
+            padding: 12px;
+            background: #fff;
+            min-height: 200px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+        }
+        .q1-card { border-color: #d9534f; background-color: #fff5f5; }
+        .q2-card { border-color: #f0ad4e; background-color: #fffaf0; }
+        .q3-card { border-color: #337ab7; background-color: #f0f8ff; }
+        .q4-card { border-color: #5cb85c; background-color: #f5fff5; }
+        
+        .q-title {
+            font-weight: bold;
+            font-size: 13px;
+            margin-bottom: 8px;
+            padding-bottom: 4px;
+            border-bottom: 2px solid rgba(0,0,0,0.1);
+            display: flex;
+            justify-content: space-between;
+        }
+        .q1-card .q-title { color: #c9302c; }
+        .q2-card .q-title { color: #ec971f; }
+        .q3-card .q-title { color: #286090; }
+        .q4-card .q-title { color: #449d44; }
+
+        .q-item-list {
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+            max-height: 250px;
+            overflow-y: auto;
+        }
+        .q-item {
+            background: #fff;
+            border: 1px solid #ddd;
+            padding: 6px 10px;
+            border-radius: 4px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-size: 11px;
+        }
+
+        .email-form-section {
+            border: 1px solid #ddd;
+            padding: 12px;
+            border-radius: 6px;
+            background: #fdfdfd;
+            margin-top: 10px;
+        }
+        .checkbox-group {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            margin-top: 6px;
+        }
+        .checkbox-label {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-weight: normal;
+            cursor: pointer;
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <div class="top-bar">
+        <h2>Breakdown & Availability Management System</h2>
+        <div class="controls">
+            <label><b>Month:</b></label>
+            <select id="selectMonth" onchange="onPeriodChange()">
+                <option value="0">January</option>
+                <option value="1">February</option>
+                <option value="2">March</option>
+                <option value="3">April</option>
+                <option value="4">May</option>
+                <option value="5">June</option>
+                <option value="6">July</option>
+                <option value="7" selected>August</option>
+                <option value="8">September</option>
+                <option value="9">October</option>
+                <option value="10">November</option>
+                <option value="11">December</option>
+            </select>
+
+            <label><b>Year:</b></label>
+            <select id="selectYear" onchange="onPeriodChange()"></select>
+
+            <button class="btn-email" onclick="openEmailModal()">✉️ Send Email Report</button>
+            <button class="btn-save" onclick="saveToFile()">📁 Export Backup (.json)</button>
+            <button class="btn-save" onclick="loadFromFile()">📂 Load Backup (.json)</button>
+            <button class="btn-excel" onclick="exportBreakdownLogExcel()">Export Breakdown (.xlsx)</button>
+            <button class="btn-excel" onclick="exportAvailabilityExcel()">Export Availability (.xlsx)</button>
+            <button class="btn-excel" onclick="exportBreakdownTrendExcel()">Export Trend (.xlsx)</button>
+        </div>
+    </div>
+
+    <div class="nav-tabs">
+        <button class="tab-btn active" onclick="switchTab('breakdownTab', this)">Breakdown Log Sheet</button>
+        <button class="tab-btn" onclick="switchTab('availabilityTab', this)">Availability Matrix & KPI Report</button>
+        <button class="tab-btn" onclick="switchTab('trendTab', this)">Breakdown Trend Sheet</button>
+        <button class="tab-btn" onclick="switchTab('compareTab', this)">Machine Comparison</button>
+        <button class="tab-btn" onclick="switchTab('quadrantTab', this)">Quadrant Profiling</button>
+    </div>
+
+    <!-- TAB 1: Breakdown Log Sheet -->
+    <div id="breakdownTab" class="tab-content active">
+        <div class="filter-bar">
+            <b>Filter Logs:</b>
+            <input type="text" id="filterSearch" placeholder="Search machine, issue, engineer..." onkeyup="renderBreakdownLogTable()">
+            <select id="filterMachine" onchange="renderBreakdownLogTable()">
+                <option value="">All Machines</option>
+            </select>
+            <select id="filterShift" onchange="renderBreakdownLogTable()">
+                <option value="">All Shifts</option>
+                <option value="1">Shift 1</option>
+                <option value="2">Shift 2</option>
+                <option value="3">Shift 3</option>
+            </select>
+            <button class="btn-primary" onclick="clearFilters()">Reset Filters</button>
+            <button class="btn-primary" onclick="openAddModal()">+ Add Breakdown Entry</button>
+        </div>
+
+        <div class="table-wrap">
+            <table id="breakdownLogTable">
+                <thead>
+                    <tr style="background-color: #8ea9db; color: #000;">
+                        <th>Sl.No</th>
+                        <th>Date & Time</th>
+                        <th>Shift (1,2,3)</th>
+                        <th>Total Operating Time in min</th>
+                        <th>Machine Name</th>
+                        <th>Machine Number</th>
+                        <th>Nature of Issue (Customer Voice) Alarm Display</th>
+                        <th>Type of issue (M/E)</th>
+                        <th>Breakdown Loss time in mins</th>
+                        <th>Status (STOP/RUN)</th>
+                        <th>Immediate Corrective Action</th>
+                        <th>Permanent Corrective Action *</th>
+                        <th>Counter Measure</th>
+                        <th>Machine Availability (C-H)/C</th>
+                        <th>Shift Engineer Name</th>
+                        <th>Spares Consumed details</th>
+                        <th>PCA Responsibility Engineer Name</th>
+                        <th>PCA Status</th>
+                        <th>Action</th>
+                    </tr>
+                </thead>
+                <tbody id="breakdownLogTableBody"></tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- TAB 2: Availability Matrix & KPI Report -->
+    <div id="availabilityTab" class="tab-content">
+        <div class="table-wrap">
+            <table id="availabilityMatrixTable"></table>
+        </div>
+        <div style="margin-top:20px;">
+            <h3 style="color:var(--primary-blue); margin-bottom:8px;">Summary Metrics (KPI)</h3>
+            <table class="kpi-table" id="kpiSummaryTable"></table>
+        </div>
+    </div>
+
+    <!-- TAB 3: Breakdown Trend Sheet -->
+    <div id="trendTab" class="tab-content">
+        <table class="doc-header-table">
+            <tr>
+                <td style="width: 30%; vertical-align: middle; padding: 6px;">
+                    <div class="logo-cell">
+                        <img src="https://static.businessworld.in/1681206514_Gv5Utq_Delphi_TVS_Logo.png" alt="Delphi - TVS Technologies Logo">
+                    </div>
+                </td>
+                <td class="doc-header-title" style="width: 45%;">BREAKDOWN TREND</td>
+                <td style="width: 25%; text-align: left; font-size: 10px;">
+                    <b>Format No:</b> F/TQM/DWM VCS 25<br>
+                    <b>Rev No & Date:</b> 03 / 30.12.24
+                </td>
+            </tr>
+            <tr>
+                <td style="text-align: left;"><b>Plant:</b> CR - Oragadam</td>
+                <td rowspan="2"></td>
+                <td style="text-align: left; font-size: 10px;">
+                    <b>Month & Year:</b> <span id="trendMonthYearText">Aug-26</span>
+                </td>
+            </tr>
+            <tr>
+                <td style="text-align: left;"><b>APU / Section:</b> INJECTOR</td>
+                <td style="text-align: left; font-size: 10px;"><b>Cell / Line:</b> IAT</td>
+            </tr>
+        </table>
+
+        <div class="trend-canvas-container">
+            <canvas id="trendCanvas" width="1250" height="320"></canvas>
+        </div>
+
+        <div class="table-wrap" style="margin-bottom: 20px;">
+            <table id="trendTotalTable"></table>
+        </div>
+
+        <h4 style="margin: 10px 0 5px 0; color: var(--primary-blue);">Machine Breakdown Occurrences</h4>
+        <div class="table-wrap">
+            <table id="trendMachineTable"></table>
+        </div>
+    </div>
+
+    <!-- TAB 4: Machine Comparison -->
+    <div id="compareTab" class="tab-content">
+        <div class="filter-bar" style="flex-direction: column; align-items: flex-start; gap:12px;">
+            <div style="display:flex; justify-content:space-between; width:100%; align-items:center; flex-wrap:wrap; gap:10px;">
+                <b style="font-size:13px; color:var(--primary-blue);">Date & Time Filter Range:</b>
+                <div style="display:flex; gap:8px; align-items:center; flex-wrap:wrap;">
+                    <label><b>From Date:</b></label>
+                    <input type="date" id="compareFromDate" onchange="renderMachineComparison()">
+                    <label><b>Time:</b></label>
+                    <input type="time" id="compareFromTime" value="00:00" onchange="renderMachineComparison()">
+
+                    <label style="margin-left:8px;"><b>To Date:</b></label>
+                    <input type="date" id="compareToDate" onchange="renderMachineComparison()">
+                    <label><b>Time:</b></label>
+                    <input type="time" id="compareToTime" value="23:59" onchange="renderMachineComparison()">
+
+                    <button class="btn-excel" style="margin-left:8px;" onclick="exportMachineComparisonExcel()">Export Comparison (.xlsx)</button>
+                </div>
+            </div>
+
+            <div style="display:flex; justify-content:space-between; width:100%; align-items:center; flex-wrap:wrap; gap:10px; margin-top:5px; border-top:1px solid #ddd; padding-top:10px;">
+                <b style="font-size:13px; color:var(--primary-blue);">Select Machines to Compare:</b>
+                <div style="display:flex; gap:8px;">
+                    <button class="btn-primary" onclick="selectAllCompareMachines(true)">Select All Machines</button>
+                    <button class="btn-primary" style="background:#6c757d;" onclick="selectAllCompareMachines(false)">Clear All</button>
+                    <button class="btn-excel" onclick="renderMachineComparison()">Update Comparison Chart</button>
+                </div>
+            </div>
+            <div id="compareMachineCheckboxes" class="compare-checkbox-grid"></div>
+        </div>
+
+        <div style="margin-top:15px; background:#fff; padding:15px; border:1px solid var(--border-gray); border-radius:6px;">
+            <h4 style="margin:0 0 10px 0; color:var(--primary-blue);">Machine Breakdown Hours & Occurrences Comparison</h4>
+            <div class="trend-canvas-container" style="border:none; padding:0;">
+                <canvas id="compareCanvas" width="1200" height="320"></canvas>
+            </div>
+        </div>
+
+        <div style="margin-top:20px;" class="table-wrap">
+            <h4 style="margin:0 0 10px 0; color:var(--primary-blue);">Comparative Machine Metrics Matrix</h4>
+            <table id="compareMetricsTable"></table>
+        </div>
+    </div>
+
+    <!-- TAB 5: Quadrant Profiling -->
+    <div id="quadrantTab" class="tab-content">
+        <div class="filter-bar">
+            <b>Filter Profiling:</b>
+            <select id="quadrantFilterMachine" onchange="renderQuadrantProfiling()">
+                <option value="">All Machines</option>
+            </select>
+            
+            <label style="margin-left:8px;"><b>From Date:</b></label>
+            <input type="date" id="quadrantFromDate" onchange="renderQuadrantProfiling()">
+            <label><b>Time:</b></label>
+            <input type="time" id="quadrantFromTime" value="00:00" onchange="renderQuadrantProfiling()">
+
+            <label style="margin-left:8px;"><b>To Date:</b></label>
+            <input type="date" id="quadrantToDate" onchange="renderQuadrantProfiling()">
+            <label><b>Time:</b></label>
+            <input type="time" id="quadrantToTime" value="23:59" onchange="renderQuadrantProfiling()">
+
+            <label style="margin-left:8px;"><b>Occ. Thresh:</b></label>
+            <input type="number" id="thresholdOcc" value="2" min="1" style="width:50px;" onchange="renderQuadrantProfiling()">
+
+            <label style="margin-left:8px;"><b>DT Thresh (Mins):</b></label>
+            <input type="number" id="thresholdDt" value="30" min="1" style="width:60px;" onchange="renderQuadrantProfiling()">
+
+            <button class="btn-primary" onclick="autoSetQuadrantThresholds()">Auto-Set Averages</button>
+            <button class="btn-excel" onclick="exportQuadrantProfilingExcel()">Export Quadrant (.xlsx)</button>
+        </div>
+
+        <div class="trend-canvas-container" style="margin-top:10px;">
+            <canvas id="quadrantCanvas" width="1100" height="380"></canvas>
+        </div>
+
+        <div class="quadrant-grid">
+            <div class="quadrant-card q2-card">
+                <div class="q-title">
+                    <span>Quadrant 2: Low Occurrences, High Downtime</span>
+                    <span id="q2Count" class="badge">0</span>
+                </div>
+                <div style="font-size:10px; color:#666; margin-bottom:8px;">Major/Chronic Breakdowns (High Restoration Time)</div>
+                <div id="q2List" class="q-item-list"></div>
+            </div>
+
+            <div class="quadrant-card q1-card">
+                <div class="q-title">
+                    <span>Quadrant 1: High Occurrences, High Downtime</span>
+                    <span id="q1Count" class="badge">0</span>
+                </div>
+                <div style="font-size:10px; color:#666; margin-bottom:8px;">Critical Focus Area (Worst Performers)</div>
+                <div id="q1List" class="q-item-list"></div>
+            </div>
+
+            <div class="quadrant-card q4-card">
+                <div class="q-title">
+                    <span>Quadrant 4: Low Occurrences, Low Downtime</span>
+                    <span id="q4Count" class="badge">0</span>
+                </div>
+                <div style="font-size:10px; color:#666; margin-bottom:8px;">Normal / Low Risk Equipment</div>
+                <div id="q4List" class="q-item-list"></div>
+            </div>
+
+            <div class="quadrant-card q3-card">
+                <div class="q-title">
+                    <span>Quadrant 3: High Occurrences, Low Downtime</span>
+                    <span id="q3Count" class="badge">0</span>
+                </div>
+                <div style="font-size:10px; color:#666; margin-bottom:8px;">Frequent Minor Stops / Nuisance Issues</div>
+                <div id="q3List" class="q-item-list"></div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- MODAL: Entry Form -->
+<div id="entryModal" class="modal">
+    <div class="modal-content">
+        <h3 style="margin-top:0; color:var(--primary-blue);">Add Breakdown Log Entry</h3>
+        <div class="form-grid">
+            <div class="form-group">
+                <label>Date *</label>
+                <input type="date" id="inputDate">
+            </div>
+            <div class="form-group">
+                <label>Time *</label>
+                <input type="time" id="inputTime" value="08:00">
+            </div>
+            <div class="form-group">
+                <label>Shift (1, 2, 3) *</label>
+                <select id="inputShift">
+                    <option value="1">1</option>
+                    <option value="2">2</option>
+                    <option value="3">3</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label>Total Operating Time (mins) *</label>
+                <input type="number" id="inputOpTime" value="480">
+            </div>
+            <div class="form-group">
+                <label>Machine Selection *</label>
+                <select id="inputMachineSelect"></select>
+            </div>
+            <div class="form-group">
+                <label>Nature of Issue / Alarm Display</label>
+                <input type="text" id="inputIssue" placeholder="e.g. Sensor Fault">
+            </div>
+            <div class="form-group">
+                <label>Type of Issue</label>
+                <select id="inputTypeIssue">
+                    <option value="M">Mechanical (M)</option>
+                    <option value="E">Electrical (E)</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label>Breakdown Loss Time (mins) *</label>
+                <input type="number" id="inputLossTime" value="0" placeholder="e.g. 34">
+            </div>
+            <div class="form-group">
+                <label>Status</label>
+                <select id="inputStatus">
+                    <option value="RUN">RUN</option>
+                    <option value="STOP">STOP</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label>Immediate Corrective Action</label>
+                <input type="text" id="inputImmediateAction">
+            </div>
+            <div class="form-group">
+                <label>Permanent Corrective Action</label>
+                <input type="text" id="inputPermanentAction">
+            </div>
+            <div class="form-group">
+                <label>Counter Measure</label>
+                <input type="text" id="inputCounterMeasure">
+            </div>
+            <div class="form-group">
+                <label>Shift Engineer Name</label>
+                <input type="text" id="inputShiftEngineer">
+            </div>
+            <div class="form-group">
+                <label>Spares Consumed Details</label>
+                <input type="text" id="inputSpares">
+            </div>
+            <div class="form-group">
+                <label>PCA Responsibility Engineer Name</label>
+                <input type="text" id="inputRespEngineer">
+            </div>
+            <div class="form-group">
+                <label>PCA Status</label>
+                <select id="inputPcaStatus">
+                    <option value="Inprogress">Inprogress</option>
+                    <option value="Action">Action</option>
+                    <option value="Completed">Completed</option>
+                </select>
+            </div>
+        </div>
+
+        <div style="margin-top:20px; text-align:right; display:flex; gap:10px; justify-content:flex-end;">
+            <button style="background:#6c757d; color:#fff;" onclick="closeAddModal()">Cancel</button>
+            <button class="btn-primary" onclick="saveBreakdownEntry()">Save Entry</button>
+        </div>
+    </div>
+</div>
+
+<!-- MODAL: Email Form -->
+<div id="emailModal" class="modal">
+    <div class="modal-content">
+        <h3 style="margin-top:0; color:var(--primary-blue); border-bottom:1px solid #ccc; padding-bottom:8px;">
+            ✉️ Send Equipment Breakdown & Availability Report via Email
+        </h3>
+        
+        <div class="email-form-section">
+            <div class="form-grid">
+                <div class="form-group">
+                    <label>From Address (Sender)</label>
+                    <input type="email" id="emailFrom" placeholder="engineer@delphi-tvs.com">
+                </div>
+                <div class="form-group">
+                    <label>To Address (Recipient) *</label>
+                    <input type="email" id="emailTo" placeholder="manager@delphi-tvs.com" required>
+                </div>
+            </div>
+            <div class="form-group" style="margin-top:10px;">
+                <label>Email Subject Line</label>
+                <input type="text" id="emailSubject" value="Equipment Breakdown & Availability Status Report">
+            </div>
+        </div>
+
+        <div class="email-form-section">
+            <label style="font-weight:bold; font-size:12px; color:var(--primary-blue);">Select Forms / Summary Sections to Include in Email Body & Export as File Attachments:</label>
+            <div class="checkbox-group">
+                <label class="checkbox-label">
+                    <input type="checkbox" id="sendOptAvailability" checked>
+                    <span><b>Availability Matrix & KPI Summary</b> (.xlsx File)</span>
+                </label>
+                <label class="checkbox-label">
+                    <input type="checkbox" id="sendOptQuadrant" checked>
+                    <span><b>Quadrant Profiling Summary</b> (.xlsx File)</span>
+                </label>
+                <label class="checkbox-label">
+                    <input type="checkbox" id="sendOptLogs" checked>
+                    <span><b>Breakdown Log Sheet</b> (.xlsx File)</span>
+                </label>
+                <label class="checkbox-label">
+                    <input type="checkbox" id="sendOptTrend" checked>
+                    <span><b>Breakdown Trend Data</b> (.xlsx File)</span>
+                </label>
+                <label class="checkbox-label">
+                    <input type="checkbox" id="sendOptJson" checked>
+                    <span><b>System Data Backup</b> (.json File)</span>
+                </label>
+            </div>
+        </div>
+
+        <div class="email-form-section">
+            <label style="font-weight:bold; font-size:11px; color:#444;">Additional Notes / Remarks for Recipient:</label>
+            <textarea id="emailCustomNotes" rows="3" style="width:100%; margin-top:4px; font-family: inherit;" placeholder="Type any additional message or action items here..."></textarea>
+        </div>
+
+        <div style="margin-top:20px; text-align:right; display:flex; gap:10px; justify-content:flex-end;">
+            <button style="background:#6c757d; color:#fff;" onclick="closeEmailModal()">Cancel</button>
+            <button class="btn-primary" onclick="sendEmailViaWebGmail()">Open Direct in Gmail Web Browser</button>
+        </div>
+    </div>
+</div>
+
+<input type="file" id="fileInput" style="display:none" onchange="handleFileSelect(event)">
+
+<script>
+    const logoUrl = "https://static.businessworld.in/1681206514_Gv5Utq_Delphi_TVS_Logo.png";
+
+    const rawMachineData = [
+        { mcNo: "OP30052", name: "DURR 1" },
+        { mcNo: "OP30060", name: "DURR 2" },
+        { mcNo: "OP30061", name: "DURR 3" },
+        { mcNo: "OP30062", name: "DURR 4" },
+        { mcNo: "OM40204", name: "NNA" },
+        { mcNo: "OM4006A", name: "COIL ASSEMBLY 1" },
+        { mcNo: "OM4006B", name: "PIN & SPRING 1" },
+        { mcNo: "OM40158", name: "VTM 1" },
+        { mcNo: "OM40006F", name: "LABELLING 1" },
+        { mcNo: "OM40198", name: "COIL ASSEMBLY 2" },
+        { mcNo: "OM40141B", name: "PIN & SPRING 2" },
+        { mcNo: "OM40169", name: "VTM 2" },
+        { mcNo: "OM0141F", name: "LABELLING 2" },
+        { mcNo: "OM40336", name: "COIL ASSEMBLY 3" },
+        { mcNo: "OM40337", name: "PIN & SPRING 3" },
+        { mcNo: "OM40335", name: "VTM 3" },
+        { mcNo: "OM40367", name: "PIN SEGREGATION" },
+        { mcNo: "OM40368", name: "SPRING SEGREGATION" },
+        { mcNo: "OM40021", name: "SCREWING & LEAK TEST 1" },
+        { mcNo: "OT25010", name: "BENCH 21" },
+        { mcNo: "OT25008", name: "BENCH 31" },
+        { mcNo: "OT25007", name: "BENCH 41" },
+        { mcNo: "OT25009", name: "BENCH 51" },
+        { mcNo: "OT25038", name: "BENCH 61" },
+        { mcNo: "OM40022", name: "UNSCREWING 1" },
+        { mcNo: "OT25058", name: "LEAK TEST 2" },
+        { mcNo: "OT25096", name: "BENCH 22" },
+        { mcNo: "OT25067", name: "BENCH 32" },
+        { mcNo: "OT25068", name: "BENCH 42" },
+        { mcNo: "OT25069", name: "BENCH 52" },
+        { mcNo: "OT25070", name: "BENCH 62" },
+        { mcNo: "OT25059", name: "LEAK TEST 82" },
+        { mcNo: "OT25114", name: "BENCH 82" },
+        { mcNo: "OT25120", name: "ATEQ 3" },
+        { mcNo: "", name: "JCB ATEQ 4" },
+        { mcNo: "OT25121", name: "BENCH 23" },
+        { mcNo: "OT25115", name: "BENCH 43" },
+        { mcNo: "", name: "BENCH 53" },
+        { mcNo: "", name: "ATEQ 4" },
+        { mcNo: "", name: "BENCH 24" },
+        { mcNo: "", name: "BENCH 34" },
+        { mcNo: "", name: "BENCH 44" },
+        { mcNo: "", name: "BENCH 54" },
+        { mcNo: "OM40361", name: "COIL ORIENTATION & CONE LEAK 1" },
+        { mcNo: "OM40362", name: "M14 THREAD CHECKING 1" },
+        { mcNo: "OM40160", name: "LASER MARKING 1" },
+        { mcNo: "OM40050", name: "COPPER WASHER ASSY 1" },
+        { mcNo: "", name: "MANUAL INSPECTION 1" },
+        { mcNo: "OM40202", name: "COIL ORIENTATION & CONE LEAK 2" },
+        { mcNo: "OM40203", name: "M14 THREAD CHECKING 2" },
+        { mcNo: "OM54023", name: "LASER MARKING 2" },
+        { mcNo: "OM0159D", name: "COPPER WASHER ASSY 2" },
+        { mcNo: "", name: "MANUAL INSPECTION 2" },
+        { mcNo: "OM40363", name: "COIL ORIENTATION & CONE LEAK 3" },
+        { mcNo: "OM40365", name: "M14 THREAD CHECKING 3" },
+        { mcNo: "OM54025", name: "LASER MARKING 3" },
+        { mcNo: "OM40366", name: "COPPER WASHER ASSY 3" },
+        { mcNo: "", name: "MANUAL INSPECTION 3" },
+        { mcNo: "", name: "AUTO INSPECTION" },
+        { mcNo: "", name: "NON HMI ORING" },
+        { mcNo: "", name: "HMI ORING" },
+        { mcNo: "OQ25018", name: "EXTRACTION BENCH" },
+        { mcNo: "OT25075", name: "BENCH 72" },
+        { mcNo: "OT25007", name: "POWERPACK 1" },
+        { mcNo: "", name: "POWERPACK 2" },
+        { mcNo: "", name: "POWERPACK 3" },
+        { mcNo: "", name: "POWERPACK 4" },
+        { mcNo: "", name: "POWERPACK - SILVER BENCH" },
+        { mcNo: "OM4007", name: "DMC READING-REWORK" },
+        { mcNo: "OM4007", name: "INJECTOR DISASSEMBLY - REWORK" },
+        { mcNo: "OM4007", name: "NHB CAPNUT CLEANING -REWORK" },
+        { mcNo: "", name: "FQG 1" },
+        { mcNo: "", name: "FQG 2" },
+        { mcNo: "", name: "FQG 3" },
+        { mcNo: "", name: "FQG 4" }
+    ];
+
+    const machineMaster = rawMachineData.map((mc, idx) => {
+        const uppercaseName = mc.name.toUpperCase();
+        const isCrit = uppercaseName.includes("DURR 3") || uppercaseName.includes("DURR 4") || uppercaseName.includes("VTM");
+        return {
+            id: idx + 1,
+            mcNo: mc.mcNo,
+            name: uppercaseName,
+            isCritical: isCrit,
+            plannedHrsPerMonth: 720
+        };
+    });
+
+    let breakdownLogs = JSON.parse(localStorage.getItem('sys_breakdown_logs')) || [
+        {
+            id: 1, date: '2026-08-01', time: '08:30', shift: '1', opTime: 480, mcName: 'DURR 1', mcNo: 'OP30052',
+            issue: 'Sensor Fault', typeIssue: 'E', lossTime: 45, status: 'RUN',
+            immAction: 'Sensor replaced', permAction: 'Fixed wiring', counterMeasure: 'FLM check',
+            avail: 90.62, shiftEng: 'John Doe', spares: 'SAP-90882', respEng: 'Alex M', pcaStatus: 'Action'
+        },
+        {
+            id: 2, date: '2026-08-01', time: '14:15', shift: '2', opTime: 480, mcName: 'DURR 1', mcNo: 'OP30052',
+            issue: 'Motor Trip', typeIssue: 'E', lossTime: 35, status: 'RUN',
+            immAction: 'Reset breaker', permAction: 'Overload setup', counterMeasure: 'PM check',
+            avail: 92.70, shiftEng: 'John Doe', spares: 'RELAY-01', respEng: 'Alex M', pcaStatus: 'Completed'
+        },
+        {
+            id: 3, date: '2026-08-01', time: '16:00', shift: '2', opTime: 480, mcName: 'NNA', mcNo: 'OM40204',
+            issue: 'Pressure Drop', typeIssue: 'M', lossTime: 120, status: 'RUN',
+            immAction: 'Valve adjusted', permAction: 'Seal replacement', counterMeasure: 'PM check',
+            avail: 75.00, shiftEng: 'Mike R', spares: 'VALVE-12', respEng: 'Alex M', pcaStatus: 'Completed'
+        }
+    ];
+
+    function populateYearDropdown() {
+        const yearSelect = document.getElementById('selectYear');
+        yearSelect.innerHTML = '';
+        
+        const startYear = 2020;
+        const endYear = 2100;
+        const currentYear = new Date().getFullYear();
+
+        for (let y = startYear; y <= endYear; y++) {
+            const option = document.createElement('option');
+            option.value = y;
+            option.textContent = y;
+            if (y === currentYear) {
+                option.selected = true;
+            }
+            yearSelect.appendChild(option);
+        }
+    }
+
+    function updateFilterDatesFromMonthYear() {
+        const year = parseInt(document.getElementById('selectYear').value);
+        const month = parseInt(document.getElementById('selectMonth').value);
+
+        const firstDay = `${year}-${String(month + 1).padStart(2, '0')}-01`;
+        const lastDayNum = new Date(year, month + 1, 0).getDate();
+        const lastDay = `${year}-${String(month + 1).padStart(2, '0')}-${String(lastDayNum).padStart(2, '0')}`;
+
+        document.getElementById('compareFromDate').value = firstDay;
+        document.getElementById('compareToDate').value = lastDay;
+        document.getElementById('quadrantFromDate').value = firstDay;
+        document.getElementById('quadrantToDate').value = lastDay;
+    }
+
+    function isLogInDateTimeRange(log, fromDateId, fromTimeId, toDateId, toTimeId) {
+        const fDate = document.getElementById(fromDateId)?.value;
+        const fTime = document.getElementById(fromTimeId)?.value || "00:00";
+        const tDate = document.getElementById(toDateId)?.value;
+        const tTime = document.getElementById(toTimeId)?.value || "23:59";
+
+        const logTimeStr = log.time || "00:00";
+        const logDateTime = new Date(`${log.date}T${logTimeStr}`);
+
+        if (fDate) {
+            const startCutoff = new Date(`${fDate}T${fTime}`);
+            if (logDateTime < startCutoff) return false;
+        } else {
+            const year = parseInt(document.getElementById('selectYear').value);
+            const month = parseInt(document.getElementById('selectMonth').value);
+            const d = new Date(log.date);
+            if (d.getFullYear() !== year || d.getMonth() !== month) return false;
+        }
+
+        if (tDate) {
+            const endCutoff = new Date(`${tDate}T${tTime}`);
+            if (logDateTime > endCutoff) return false;
+        }
+
+        return true;
+    }
+
+    function persistLogs() {
+        localStorage.setItem('sys_breakdown_logs', JSON.stringify(breakdownLogs));
+    }
+
+    function saveToFile() {
+        const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(breakdownLogs, null, 2));
+        const downloadAnchor = document.createElement('a');
+        downloadAnchor.setAttribute("href", dataStr);
+        downloadAnchor.setAttribute("download", "breakdown_backup.json");
+        document.body.appendChild(downloadAnchor);
+        downloadAnchor.click();
+        downloadAnchor.remove();
+    }
+
+    function loadFromFile() {
+        document.getElementById('fileInput').click();
+    }
+
+    function handleFileSelect(event) {
+        const file = event.target.files[0];
+        if (!file) return;
+        const reader = new FileReader();
+        reader.onload = function(e) {
+            try {
+                breakdownLogs = JSON.parse(e.target.result);
+                persistLogs();
+                onPeriodChange();
+                alert('Data successfully loaded!');
+            } catch (err) {
+                alert('Invalid JSON File!');
+            }
+        };
+        reader.readAsText(file);
+    }
+
+    function switchTab(tabId, btn) {
+        document.querySelectorAll('.tab-content').forEach(tc => tc.classList.remove('active'));
+        document.querySelectorAll('.tab-btn').forEach(tb => tb.classList.remove('active'));
+        document.getElementById(tabId).classList.add('active');
+        btn.classList.add('active');
+
+        if (tabId === 'trendTab') {
+            renderBreakdownTrend();
+        } else if (tabId === 'compareTab') {
+            renderMachineComparison();
+        } else if (tabId === 'quadrantTab') {
+            renderQuadrantProfiling();
+        }
+    }
+
+    function openAddModal() {
+        document.getElementById('entryModal').style.display = 'flex';
+        document.getElementById('inputDate').valueAsDate = new Date();
+    }
+
+    function closeAddModal() {
+        document.getElementById('entryModal').style.display = 'none';
+    }
+
+    function openEmailModal() {
+        document.getElementById('emailModal').style.display = 'flex';
+    }
+
+    function closeEmailModal() {
+        document.getElementById('emailModal').style.display = 'none';
+    }
+
+    function generateEmailBodyContent() {
+        const year = parseInt(document.getElementById('selectYear').value);
+        const month = parseInt(document.getElementById('selectMonth').value);
+        const monthName = new Date(year, month, 1).toLocaleString('en-US', { month: 'long' });
+
+        let body = `EQUIPMENT BREAKDOWN & AVAILABILITY REPORT - ${monthName.toUpperCase()} ${year}\n`;
+        body += `==========================================================\n\n`;
+
+        const fromVal = document.getElementById('emailFrom').value;
+        if (fromVal) {
+            body += `Sender (From): ${fromVal}\n`;
+        }
+        
+        const customNotes = document.getElementById('emailCustomNotes').value;
+        if (customNotes) {
+            body += `Notes/Remarks: ${customNotes}\n`;
+        }
+        body += `\n`;
+
+        body += `*** NOTE: The selected Excel files & Json Backup have been automatically downloaded to your computer's Downloads folder. Please drag & drop or attach them to this email before hitting send. ***\n\n`;
+
+        if (document.getElementById('sendOptAvailability').checked) {
+            const kpi = getKpiMetrics();
+            body += `--- [1] AVAILABILITY & KPI METRICS ---\n`;
+            body += `Overall Availability: ${kpi.overallAvail}%\n`;
+            body += `Critical MCs Availability: ${kpi.critAvail}%\n`;
+            body += `Total Breakdown Loss: ${kpi.overallBdHrs} Hours (${kpi.totalBdOcc} Occurrences)\n`;
+            body += `Overall MTTR: ${kpi.overallMttr} Hrs | Overall MTBF: ${kpi.overallMtbf} Hrs\n`;
+            body += `Critical MTTR: ${kpi.critMttr} Hrs | Critical MTBF: ${kpi.critMtbf} Hrs\n`;
+            body += `Machines > 98% Avail: ${kpi.countGt98} | 90-98%: ${kpi.count90to98} | < 90%: ${kpi.countLt90}\n\n`;
+        }
+
+        if (document.getElementById('sendOptQuadrant').checked) {
+            const q1Count = document.getElementById('q1Count').innerText;
+            const q2Count = document.getElementById('q2Count').innerText;
+            const q3Count = document.getElementById('q3Count').innerText;
+            const q4Count = document.getElementById('q4Count').innerText;
+
+            body += `--- [2] QUADRANT PROFILING SUMMARY ---\n`;
+            body += `Q1 (High Occ, High DT - Critical Focus): ${q1Count} Machines\n`;
+            body += `Q2 (Low Occ, High DT - Major Breakdown): ${q2Count} Machines\n`;
+            body += `Q3 (High Occ, Low DT - Nuisance Stops): ${q3Count} Machines\n`;
+            body += `Q4 (Low Occ, Low DT - Normal Risk): ${q4Count} Machines\n\n`;
+        }
+
+        if (document.getElementById('sendOptLogs').checked) {
+            body += `--- [3] RECENT BREAKDOWN LOGS ---\n`;
+            let logCount = 0;
+            breakdownLogs.forEach(l => {
+                const d = new Date(l.date);
+                if (d.getFullYear() === year && d.getMonth() === month && logCount < 10) {
+                    body += `• ${l.date} ${l.time || ''} | ${l.mcName} | Shift ${l.shift} | Loss: ${l.lossTime}m | Issue: ${l.issue || 'N/A'} | Status: ${l.pcaStatus}\n`;
+                    logCount++;
+                }
+            });
+            if (logCount === 0) body += `No breakdown logs recorded for this period.\n`;
+            body += `\n`;
+        }
+
+        if (document.getElementById('sendOptTrend').checked) {
+            body += `--- [4] DAILY BREAKDOWN TREND ---\n`;
+            let totalOccMonth = 0;
+            breakdownLogs.forEach(l => {
+                const d = new Date(l.date);
+                if (d.getFullYear() === year && d.getMonth() === month) totalOccMonth++;
+            });
+            body += `Total Occurrences in ${monthName} ${year}: ${totalOccMonth} Breakdown Events.\n\n`;
+        }
+
+        body += `Report generated automatically by Breakdown Management System.`;
+        return body;
+    }
+
+    async function sendEmailViaWebGmail() {
+        const to = document.getElementById('emailTo').value;
+        if (!to) {
+            alert('Please enter a valid "To" email address.');
+            return;
+        }
+
+        // Auto-export all checked items to local downloads folder so they are available to attach
+        if (document.getElementById('sendOptAvailability').checked) {
+            await exportAvailabilityExcel();
+        }
+        if (document.getElementById('sendOptQuadrant').checked) {
+            await exportQuadrantProfilingExcel();
+        }
+        if (document.getElementById('sendOptLogs').checked) {
+            await exportBreakdownLogExcel();
+        }
+        if (document.getElementById('sendOptTrend').checked) {
+            await exportBreakdownTrendExcel();
+        }
+        if (document.getElementById('sendOptJson').checked) {
+            saveToFile();
+        }
+
+        const subject = encodeURIComponent(document.getElementById('emailSubject').value);
+        const bodyText = encodeURIComponent(generateEmailBodyContent());
+
+        const gmailWebUrl = `https://mail.google.com/mail/?view=cm&fs=1&to=${to}&su=${subject}&body=${bodyText}`;
+        window.open(gmailWebUrl, '_blank');
+        closeEmailModal();
+    }
+
+    function populateMachineDropdowns() {
+        const modalSelect = document.getElementById('inputMachineSelect');
+        const filterSelect = document.getElementById('filterMachine');
+        const quadSelect = document.getElementById('quadrantFilterMachine');
+        const compareBoxContainer = document.getElementById('compareMachineCheckboxes');
+
+        modalSelect.innerHTML = '';
+        filterSelect.innerHTML = '<option value="">All Machines</option>';
+        quadSelect.innerHTML = '<option value="">All Machines</option>';
+        compareBoxContainer.innerHTML = '';
+
+        machineMaster.forEach((mc, idx) => {
+            const mcDisplay = mc.mcNo ? `${mc.name} (${mc.mcNo})` : mc.name;
+            modalSelect.innerHTML += `<option value="${mc.name}">${mcDisplay}</option>`;
+            filterSelect.innerHTML += `<option value="${mc.name}">${mc.name}</option>`;
+            quadSelect.innerHTML += `<option value="${mc.name}">${mc.name}</option>`;
+
+            const isChecked = idx < 8 ? 'checked' : '';
+            compareBoxContainer.innerHTML += `
+                <label class="compare-checkbox-item">
+                    <input type="checkbox" class="chk-compare-mc" value="${mc.name}" ${isChecked} onchange="renderMachineComparison()">
+                    <span>${mc.name}</span>
+                </label>
+            `;
+        });
+    }
+
+    function selectAllCompareMachines(status) {
+        const checkboxes = document.querySelectorAll('.chk-compare-mc');
+        checkboxes.forEach(chk => chk.checked = status);
+        renderMachineComparison();
+    }
+
+    function getContinuousWeekNumber(dt) {
+        const startOfYear = new Date(dt.getFullYear(), 0, 1);
+        const dayOfYear = Math.floor((dt - startOfYear) / (24 * 60 * 60 * 1000)) + 1;
+        return Math.floor((dayOfYear - 1) / 7) + 1;
+    }
+
+    function onPeriodChange() {
+        updateFilterDatesFromMonthYear();
+        renderBreakdownLogTable();
+        renderAvailabilityMatrix();
+        renderBreakdownTrend();
+        renderMachineComparison();
+        renderQuadrantProfiling();
+    }
+
+    function clearFilters() {
+        document.getElementById('filterSearch').value = '';
+        document.getElementById('filterMachine').value = '';
+        document.getElementById('filterShift').value = '';
+        renderBreakdownLogTable();
+    }
+
+    function saveBreakdownEntry() {
+        const date = document.getElementById('inputDate').value;
+        const time = document.getElementById('inputTime').value || '08:00';
+        const shift = document.getElementById('inputShift').value;
+        const opTime = parseFloat(document.getElementById('inputOpTime').value) || 0;
+        const mcName = document.getElementById('inputMachineSelect').value;
+        const mcObj = machineMaster.find(m => m.name === mcName) || { mcNo: '' };
+        const issue = document.getElementById('inputIssue').value;
+        const typeIssue = document.getElementById('inputTypeIssue').value;
+        const lossTime = parseFloat(document.getElementById('inputLossTime').value) || 0;
+        const status = document.getElementById('inputStatus').value;
+        const immAction = document.getElementById('inputImmediateAction').value;
+        const permAction = document.getElementById('inputPermanentAction').value;
+        const counterMeasure = document.getElementById('inputCounterMeasure').value;
+        const shiftEng = document.getElementById('inputShiftEngineer').value;
+        const spares = document.getElementById('inputSpares').value;
+        const respEng = document.getElementById('inputRespEngineer').value;
+        const pcaStatus = document.getElementById('inputPcaStatus').value;
+
+        if (!date || !mcName || opTime <= 0) {
+            alert('Please fill in Date, Machine, and valid Operating Time');
+            return;
+        }
+
+        const avail = opTime > 0 ? (((opTime - lossTime) / opTime) * 100).toFixed(2) : 100.00;
+
+        const newEntry = {
+            id: Date.now(),
+            date, time, shift, opTime, mcName, mcNo: mcObj.mcNo,
+            issue, typeIssue, lossTime, status,
+            immAction, permAction, counterMeasure, avail: parseFloat(avail),
+            shiftEng, spares, respEng, pcaStatus
+        };
+
+        breakdownLogs.push(newEntry);
+        breakdownLogs.sort((a, b) => new Date(`${a.date}T${a.time||'00:00'}`) - new Date(`${b.date}T${b.time||'00:00'}`));
+
+        persistLogs();
+        closeAddModal();
+        onPeriodChange();
+    }
+
+    function deleteLog(id) {
+        breakdownLogs = breakdownLogs.filter(l => l.id !== id);
+        persistLogs();
+        onPeriodChange();
+    }
+
+    function renderBreakdownLogTable() {
+        const year = parseInt(document.getElementById('selectYear').value);
+        const month = parseInt(document.getElementById('selectMonth').value);
+        const searchTerm = document.getElementById('filterSearch').value.toLowerCase();
+        const filterMc = document.getElementById('filterMachine').value;
+        const filterSh = document.getElementById('filterShift').value;
+
+        const tbody = document.getElementById('breakdownLogTableBody');
+        tbody.innerHTML = '';
+
+        breakdownLogs.sort((a, b) => new Date(`${a.date}T${a.time||'00:00'}`) - new Date(`${b.date}T${b.time||'00:00'}`));
+        let displayIndex = 1;
+
+        breakdownLogs.forEach(log => {
+            const d = new Date(log.date);
+            if (d.getFullYear() !== year || d.getMonth() !== month) return;
+
+            if (filterMc && log.mcName !== filterMc) return;
+            if (filterSh && log.shift !== filterSh) return;
+
+            const textMatch = !searchTerm ||
+                log.mcName.toLowerCase().includes(searchTerm) ||
+                log.issue.toLowerCase().includes(searchTerm) ||
+                log.shiftEng.toLowerCase().includes(searchTerm);
+
+            if (!textMatch) return;
+
+            const formattedDate = `${String(d.getDate()).padStart(2, '0')}/${d.toLocaleString('en-US', {month:'short'})}/${String(d.getFullYear()).slice(-2)}`;
+            const timeDisplay = log.time ? ` ${log.time}` : '';
+
+            tbody.innerHTML += `
+                <tr>
+                    <td>${displayIndex++}</td>
+                    <td>${formattedDate}${timeDisplay}</td>
+                    <td>${log.shift}</td>
+                    <td>${log.opTime}</td>
+                    <td><b>${log.mcName}</b></td>
+                    <td>${log.mcNo || ''}</td>
+                    <td>${log.issue || ''}</td>
+                    <td>${log.typeIssue}</td>
+                    <td><b>${log.lossTime}</b></td>
+                    <td><span style="color:${log.status==='STOP'?'red':'green'}; font-weight:bold;">${log.status}</span></td>
+                    <td>${log.immAction || ''}</td>
+                    <td>${log.permAction || ''}</td>
+                    <td>${log.counterMeasure || ''}</td>
+                    <td class="bg-green">${Number(log.avail).toFixed(2)}%</td>
+                    <td>${log.shiftEng || ''}</td>
+                    <td>${log.spares || ''}</td>
+                    <td>${log.respEng || ''}</td>
+                    <td>${log.pcaStatus}</td>
+                    <td><button class="btn-danger" onclick="deleteLog(${log.id})">Delete</button></td>
+                </tr>
+            `;
+        });
+    }
+
+    function autoSetQuadrantThresholds() {
+        const selectedMc = document.getElementById('quadrantFilterMachine').value;
+
+        let totalOcc = 0, totalDt = 0, mcCount = 0;
+
+        machineMaster.forEach(mc => {
+            if (selectedMc && mc.name !== selectedMc) return;
+            let occ = 0, dt = 0;
+            breakdownLogs.forEach(l => {
+                if (l.mcName === mc.name && isLogInDateTimeRange(l, 'quadrantFromDate', 'quadrantFromTime', 'quadrantToDate', 'quadrantToTime')) {
+                    occ += 1;
+                    dt += Number(l.lossTime);
+                }
+            });
+            if (occ > 0 || dt > 0) {
+                totalOcc += occ;
+                totalDt += dt;
+                mcCount++;
+            }
+        });
+
+        const avgOcc = mcCount > 0 ? Math.ceil(totalOcc / mcCount) : 2;
+        const avgDt = mcCount > 0 ? Math.ceil(totalDt / mcCount) : 30;
+
+        document.getElementById('thresholdOcc').value = Math.max(avgOcc, 1);
+        document.getElementById('thresholdDt').value = Math.max(avgDt, 1);
+
+        renderQuadrantProfiling();
+    }
+
+    function renderQuadrantProfiling() {
+        const selectedMc = document.getElementById('quadrantFilterMachine').value;
+
+        const threshOcc = parseFloat(document.getElementById('thresholdOcc').value) || 2;
+        const threshDt = parseFloat(document.getElementById('thresholdDt').value) || 30;
+
+        const q1List = [], q2List = [], q3List = [], q4List = [];
+        const plotData = [];
+
+        machineMaster.forEach(mc => {
+            if (selectedMc && mc.name !== selectedMc) return;
+
+            let occ = 0, dtMins = 0;
+            breakdownLogs.forEach(l => {
+                if (l.mcName === mc.name && isLogInDateTimeRange(l, 'quadrantFromDate', 'quadrantFromTime', 'quadrantToDate', 'quadrantToTime')) {
+                    occ += 1;
+                    dtMins += Number(l.lossTime);
+                }
+            });
+
+            const item = { name: mc.name, mcNo: mc.mcNo, occ, dtMins };
+            plotData.push(item);
+
+            if (occ >= threshOcc && dtMins >= threshDt) {
+                q1List.push(item);
+            } else if (occ < threshOcc && dtMins >= threshDt) {
+                q2List.push(item);
+            } else if (occ >= threshOcc && dtMins < threshDt) {
+                q3List.push(item);
+            } else {
+                q4List.push(item);
+            }
+        });
+
+        document.getElementById('q1Count').innerText = q1List.length;
+        document.getElementById('q2Count').innerText = q2List.length;
+        document.getElementById('q3Count').innerText = q3List.length;
+        document.getElementById('q4Count').innerText = q4List.length;
+
+        renderQuadrantList('q1List', q1List);
+        renderQuadrantList('q2List', q2List);
+        renderQuadrantList('q3List', q3List);
+        renderQuadrantList('q4List', q4List);
+
+        drawQuadrantMatrixCanvas(plotData, threshOcc, threshDt);
+    }
+
+    function renderQuadrantList(elementId, items) {
+        const container = document.getElementById(elementId);
+        container.innerHTML = '';
+        if (items.length === 0) {
+            container.innerHTML = `<div style="color:#888; font-style:italic; padding:4px;">No machines in this quadrant</div>`;
+            return;
+        }
+
+        items.forEach(item => {
+            container.innerHTML += `
+                <div class="q-item">
+                    <div><b>${item.name}</b> ${item.mcNo ? `(${item.mcNo})` : ''}</div>
+                    <div><b>${item.occ}</b> Occ | <b>${item.dtMins}</b> mins</div>
+                </div>
+            `;
+        });
+    }
+
+    function drawQuadrantMatrixCanvas(data, threshOcc, threshDt) {
+        const canvas = document.getElementById('quadrantCanvas');
+        if (!canvas) return;
+        const ctx = canvas.getContext('2d');
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+        const paddingLeft = 70;
+        const paddingRight = 40;
+        const paddingTop = 40;
+        const paddingBottom = 50;
+
+        const chartWidth = canvas.width - paddingLeft - paddingRight;
+        const chartHeight = canvas.height - paddingTop - paddingBottom;
+
+        let maxOcc = Math.max(...data.map(d => d.occ), threshOcc * 2, 5);
+        let maxDt = Math.max(...data.map(d => d.dtMins), threshDt * 2, 60);
+
+        const getX = (occ) => paddingLeft + (occ / maxOcc) * chartWidth;
+        const getY = (dt) => paddingTop + chartHeight - (dt / maxDt) * chartHeight;
+
+        const midX = getX(threshOcc);
+        const midY = getY(threshDt);
+
+        ctx.fillStyle = 'rgba(254, 243, 199, 0.4)';
+        ctx.fillRect(paddingLeft, paddingTop, midX - paddingLeft, midY - paddingTop);
+
+        ctx.fillStyle = 'rgba(254, 226, 226, 0.4)';
+        ctx.fillRect(midX, paddingTop, paddingLeft + chartWidth - midX, midY - paddingTop);
+
+        ctx.fillStyle = 'rgba(220, 252, 231, 0.4)';
+        ctx.fillRect(paddingLeft, midY, midX - paddingLeft, paddingTop + chartHeight - midY);
+
+        ctx.fillStyle = 'rgba(224, 242, 254, 0.4)';
+        ctx.fillRect(midX, midY, paddingLeft + chartWidth - midX, paddingTop + chartHeight - midY);
+
+        ctx.setLineDash([5, 5]);
+        ctx.strokeStyle = '#d9534f';
+        ctx.lineWidth = 1.5;
+
+        ctx.beginPath();
+        ctx.moveTo(midX, paddingTop);
+        ctx.lineTo(midX, paddingTop + chartHeight);
+        ctx.stroke();
+
+        ctx.beginPath();
+        ctx.moveTo(paddingLeft, midY);
+        ctx.lineTo(paddingLeft + chartWidth, midY);
+        ctx.stroke();
+        ctx.setLineDash([]);
+
+        ctx.strokeStyle = '#333';
+        ctx.lineWidth = 1.5;
+        ctx.beginPath();
+        ctx.moveTo(paddingLeft, paddingTop);
+        ctx.lineTo(paddingLeft, paddingTop + chartHeight);
+        ctx.lineTo(paddingLeft + chartWidth, paddingTop + chartHeight);
+        ctx.stroke();
+
+        ctx.fillStyle = '#000';
+        ctx.font = 'bold 12px Segoe UI';
+        ctx.textAlign = 'center';
+        ctx.fillText('OCCURRENCES (COUNT)', paddingLeft + chartWidth / 2, canvas.height - 12);
+
+        ctx.save();
+        ctx.translate(20, paddingTop + chartHeight / 2);
+        ctx.rotate(-Math.PI / 2);
+        ctx.fillText('DOWNTIME (MINUTES)', 0, 0);
+        ctx.restore();
+
+        ctx.font = 'bold 13px Segoe UI';
+        ctx.fillStyle = '#b45309';
+        ctx.fillText('Q2: Low Occ / High DT', paddingLeft + 100, paddingTop + 20);
+
+        ctx.fillStyle = '#b91c1c';
+        ctx.fillText('Q1: High Occ / High DT', paddingLeft + chartWidth - 100, paddingTop + 20);
+
+        ctx.fillStyle = '#15803d';
+        ctx.fillText('Q4: Low Occ / Low DT', paddingLeft + 100, paddingTop + chartHeight - 15);
+
+        ctx.fillStyle = '#1d4ed8';
+        ctx.fillText('Q3: High Occ / Low DT', paddingLeft + chartWidth - 100, paddingTop + chartHeight - 15);
+
+        data.forEach(d => {
+            const x = getX(d.occ);
+            const y = getY(d.dtMins);
+
+            ctx.beginPath();
+            ctx.arc(x, y, 6, 0, Math.PI * 2);
+
+            if (d.occ >= threshOcc && d.dtMins >= threshDt) ctx.fillStyle = '#d9534f'; 
+            else if (d.occ < threshOcc && d.dtMins >= threshDt) ctx.fillStyle = '#f0ad4e'; 
+            else if (d.occ >= threshOcc && d.dtMins < threshDt) ctx.fillStyle = '#337ab7'; 
+            else ctx.fillStyle = '#5cb85c'; 
+
+            ctx.fill();
+            ctx.strokeStyle = '#000';
+            ctx.lineWidth = 1;
+            ctx.stroke();
+
+            ctx.fillStyle = '#000';
+            ctx.font = '10px Segoe UI';
+            ctx.textAlign = 'left';
+            ctx.fillText(d.name, x + 8, y + 3);
+        });
+    }
+
+    function renderMachineComparison() {
+        const selectedCheckboxes = document.querySelectorAll('.chk-compare-mc:checked');
+        const selectedMcNames = Array.from(selectedCheckboxes).map(cb => cb.value);
+
+        const compareData = [];
+
+        selectedMcNames.forEach(mcName => {
+            const mcObj = machineMaster.find(m => m.name === mcName) || { mcNo: '', isCritical: false };
+            let totalBdMin = 0;
+            let totalOcc = 0;
+
+            breakdownLogs.forEach(l => {
+                if (l.mcName === mcName && isLogInDateTimeRange(l, 'compareFromDate', 'compareFromTime', 'compareToDate', 'compareToTime')) {
+                    totalBdMin += Number(l.lossTime);
+                    totalOcc += 1;
+                }
+            });
+
+            const plannedHrs = 720;
+            const plannedMin = plannedHrs * 60;
+            const bdHrs = totalBdMin / 60;
+            const avail = plannedMin > 0 ? (((plannedMin - totalBdMin) / plannedMin) * 100) : 100;
+            const mttr = totalOcc > 0 ? (bdHrs / totalOcc) : 0;
+            const mtbf = totalOcc > 0 ? ((plannedHrs - bdHrs) / totalOcc) : plannedHrs;
+
+            compareData.push({
+                mcName,
+                mcNo: mcObj.mcNo,
+                isCritical: mcObj.isCritical,
+                bdMin: totalBdMin,
+                bdHrs: parseFloat(bdHrs.toFixed(2)),
+                occ: totalOcc,
+                avail: parseFloat(avail.toFixed(2)),
+                mttr: parseFloat(mttr.toFixed(2)),
+                mtbf: parseFloat(mtbf.toFixed(2))
+            });
+        });
+
+        drawComparisonCanvas(compareData);
+
+        const table = document.getElementById('compareMetricsTable');
+        if (compareData.length === 0) {
+            table.innerHTML = `<tr><td style="padding:20px; text-align:center; color:#888;">No machines selected for comparison. Please select machines from the filter above.</td></tr>`;
+            return;
+        }
+
+        let tableHead = `
+            <thead>
+                <tr style="background-color: #1f4e78; color: #fff;">
+                    <th>Machine Name</th>
+                    <th>Machine No.</th>
+                    <th>Critical Mc?</th>
+                    <th>Breakdown Loss (Mins)</th>
+                    <th>Breakdown Loss (Hrs)</th>
+                    <th>Occurrences</th>
+                    <th>Availability (%)</th>
+                    <th>MTTR (Hrs)</th>
+                    <th>MTBF (Hrs)</th>
+                </tr>
+            </thead><tbody>`;
+
+        let tableBody = '';
+        compareData.forEach(item => {
+            const availClass = item.avail >= 90 ? 'bg-green' : 'bg-red';
+            tableBody += `
+                <tr>
+                    <td style="text-align:left; font-weight:bold;">${item.mcName}</td>
+                    <td>${item.mcNo || '-'}</td>
+                    <td>${item.isCritical ? 'Yes' : 'No'}</td>
+                    <td style="${item.bdMin > 0 ? 'background:#ffc7ce; font-weight:bold;' : ''}">${item.bdMin}</td>
+                    <td style="${item.bdHrs > 0 ? 'background:#ffc7ce; font-weight:bold;' : ''}">${item.bdHrs}</td>
+                    <td><b>${item.occ}</b></td>
+                    <td class="${availClass}">${item.avail}%</td>
+                    <td>${item.mttr}</td>
+                    <td>${item.mtbf}</td>
+                </tr>
+            `;
+        });
+
+        table.innerHTML = tableHead + tableBody + '</tbody>';
+    }
+
+    function drawComparisonCanvas(compareData) {
+        const canvas = document.getElementById('compareCanvas');
+        if (!canvas) return;
+        const ctx = canvas.getContext('2d');
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+        if (compareData.length === 0) {
+            ctx.fillStyle = '#666';
+            ctx.font = '14px Segoe UI, sans-serif';
+            ctx.textAlign = 'center';
+            ctx.fillText('Select machines above to view comparative breakdown metrics chart', canvas.width / 2, canvas.height / 2);
+            return;
+        }
+
+        const paddingLeft = 60;
+        const paddingRight = 30;
+        const paddingTop = 30;
+        const paddingBottom = 70;
+
+        const chartWidth = canvas.width - paddingLeft - paddingRight;
+        const chartHeight = canvas.height - paddingTop - paddingBottom;
+
+        let maxVal = Math.max(...compareData.map(d => d.bdHrs), 5);
+        maxVal = Math.ceil(maxVal * 1.2); 
+
+        ctx.strokeStyle = '#e0e0e0';
+        ctx.lineWidth = 1;
+        ctx.fillStyle = '#333';
+        ctx.font = '11px Segoe UI, sans-serif';
+        ctx.textAlign = 'right';
+        ctx.textBaseline = 'middle';
+
+        const ySteps = 5;
+        for (let i = 0; i <= ySteps; i++) {
+            const val = (maxVal / ySteps) * i;
+            const y = paddingTop + chartHeight - (val / maxVal) * chartHeight;
+
+            ctx.beginPath();
+            ctx.moveTo(paddingLeft, y);
+            ctx.lineTo(paddingLeft + chartWidth, y);
+            ctx.stroke();
+
+            ctx.fillText(val.toFixed(1), paddingLeft - 8, y);
+        }
+
+        const barGroupWidth = chartWidth / compareData.length;
+        const barWidth = Math.min(barGroupWidth * 0.5, 40);
+
+        compareData.forEach((d, idx) => {
+            const groupX = paddingLeft + idx * barGroupWidth;
+            const barX = groupX + (barGroupWidth - barWidth) / 2;
+            const barHeight = (d.bdHrs / maxVal) * chartHeight;
+            const barY = paddingTop + chartHeight - barHeight;
+
+            ctx.fillStyle = d.bdHrs > 0 ? '#d9534f' : '#28a745';
+            ctx.fillRect(barX, barY, barWidth, barHeight);
+
+            ctx.strokeStyle = '#333';
+            ctx.strokeRect(barX, barY, barWidth, barHeight);
+
+            ctx.fillStyle = '#000';
+            ctx.font = 'bold 11px Segoe UI, sans-serif';
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'bottom';
+            ctx.fillText(`${d.bdHrs}h (${d.occ})`, barX + barWidth / 2, barY - 4);
+
+            ctx.save();
+            ctx.translate(barX + barWidth / 2, paddingTop + chartHeight + 10);
+            ctx.rotate(-Math.PI / 6);
+            ctx.fillStyle = '#000';
+            ctx.font = '10px Segoe UI, sans-serif';
+            ctx.textAlign = 'right';
+            ctx.fillText(d.mcName, 0, 0);
+            ctx.restore();
+        });
+
+        ctx.save();
+        ctx.translate(18, canvas.height / 2 - 20);
+        ctx.rotate(-Math.PI / 2);
+        ctx.textAlign = 'center';
+        ctx.font = 'bold 11px Segoe UI, sans-serif';
+        ctx.fillStyle = '#1f4e78';
+        ctx.fillText('BREAKDOWN LOSS (HOURS)', 0, 0);
+        ctx.restore();
+    }
+
+    function getKpiMetrics() {
+        const year = parseInt(document.getElementById('selectYear').value);
+        const month = parseInt(document.getElementById('selectMonth').value);
+
+        let totalBdMin = 0, totalBdOcc = 0, totalPlannedMin = 0;
+        let critBdMin = 0, critBdOcc = 0, critPlannedMin = 0;
+        let countGt98 = 0, count90to98 = 0, countLt90 = 0;
+
+        machineMaster.forEach(mc => {
+            let mcBdMin = 0;
+            let mcBdOcc = 0;
+
+            breakdownLogs.forEach(l => {
+                const d = new Date(l.date);
+                if (l.mcName === mc.name && d.getFullYear() === year && d.getMonth() === month) {
+                    mcBdMin += Number(l.lossTime);
+                    mcBdOcc += 1;
+                }
+            });
+
+            const mcPlannedHrs = 720; 
+            const mcPlannedMin = mcPlannedHrs * 60;
+
+            totalBdMin += mcBdMin;
+            totalBdOcc += mcBdOcc;
+            totalPlannedMin += mcPlannedMin;
+
+            if (mc.isCritical) {
+                critBdMin += mcBdMin;
+                critBdOcc += mcBdOcc;
+                critPlannedMin += mcPlannedMin;
+            }
+
+            const mcAvail = mcPlannedMin > 0 ? (((mcPlannedMin - mcBdMin) / mcPlannedMin) * 100) : 100;
+            if (mcAvail > 98) countGt98++;
+            else if (mcAvail >= 90) count90to98++;
+            else countLt90++;
+        });
+
+        const overallBdHrs = totalBdMin / 60;
+        const overallPlannedHrs = totalPlannedMin / 60;
+        const overallMttr = totalBdOcc > 0 ? (overallBdHrs / totalBdOcc).toFixed(2) : '0.00';
+        const overallMtbf = totalBdOcc > 0 ? ((overallPlannedHrs - overallBdHrs) / totalBdOcc).toFixed(2) : overallPlannedHrs.toFixed(2);
+        const overallAvail = totalPlannedMin > 0 ? (((totalPlannedMin - totalBdMin) / totalPlannedMin) * 100).toFixed(2) : '100.00';
+
+        const critBdHrs = critBdMin / 60;
+        const critPlannedHrs = critPlannedMin / 60;
+        const critMttr = critBdOcc > 0 ? (critBdHrs / critBdOcc).toFixed(2) : '0.00';
+        const critMtbf = critBdOcc > 0 ? ((critPlannedHrs - critBdHrs) / critBdOcc).toFixed(2) : critPlannedHrs.toFixed(2);
+        const critAvail = critPlannedMin > 0 ? (((critPlannedMin - critBdMin) / critPlannedMin) * 100).toFixed(2) : '100.00';
+
+        return {
+            overallBdHrs: overallBdHrs.toFixed(2),
+            totalBdOcc,
+            overallMttr,
+            overallMtbf,
+            critMttr,
+            critMtbf,
+            overallAvail,
+            critAvail,
+            countGt98,
+            count90to98,
+            countLt90
+        };
+    }
+
+    function renderAvailabilityMatrix() {
+        const year = parseInt(document.getElementById('selectYear').value);
+        const month = parseInt(document.getElementById('selectMonth').value);
+        const daysInMonth = new Date(year, month + 1, 0).getDate();
+
+        const datesList = [];
+        for (let d = 1; d <= daysInMonth; d++) datesList.push(new Date(year, month, d));
+
+        const table = document.getElementById('availabilityMatrixTable');
+
+        let tableHTML = `<thead><tr>
+            <th rowspan="2" style="vertical-align:middle;">Sl. No</th>
+            <th rowspan="2" style="vertical-align:middle;">Machine Details</th>
+            <th rowspan="1" style="vertical-align:middle;">Day</th>`;
+        datesList.forEach(d => {
+            const dd = String(d.getDate()).padStart(2, '0');
+            const mmm = d.toLocaleString('en-US', { month: 'short' });
+            const yy = String(d.getFullYear()).slice(-2);
+            tableHTML += `<th class="vertical-date">${dd}-${mmm}-${yy}</th>`;
+        });
+        tableHTML += `
+            <th rowspan="2" style="vertical-align:middle;">Cum. DT in Min.</th>
+            <th rowspan="2" style="vertical-align:middle;">Cum. DT in Hrs.</th>
+            <th rowspan="2" style="vertical-align:middle;">Cum. BD Occ</th>
+            <th rowspan="2" style="vertical-align:middle;">Planned Hrs</th>
+            <th rowspan="2" style="vertical-align:middle;">Mc Availability</th>
+            <th rowspan="2" style="vertical-align:middle;">MTTR</th>
+            <th rowspan="2" style="vertical-align:middle;">MTBF</th>
+            <th rowspan="2" style="vertical-align:middle;">Remarks</th>
+        </tr>`;
+
+        tableHTML += `<tr><th style="background-color:#d9e1f2;">Week</th>`;
+        datesList.forEach(d => {
+            tableHTML += `<th style="background-color:#e2efda;">Wk ${getContinuousWeekNumber(d)}</th>`;
+        });
+        tableHTML += `</tr></thead><tbody>`;
+
+        machineMaster.forEach((mc, idx) => {
+            const dailyBdMin = Array(daysInMonth).fill(0);
+            const dailyBdOcc = Array(daysInMonth).fill(0);
+            const dailyPlanned = Array(daysInMonth).fill(1440);
+            let remarks = [];
+
+            breakdownLogs.forEach(l => {
+                const d = new Date(l.date);
+                if (l.mcName === mc.name && d.getFullYear() === year && d.getMonth() === month) {
+                    const dayIdx = d.getDate() - 1;
+                    dailyBdMin[dayIdx] += Number(l.lossTime);
+                    dailyBdOcc[dayIdx] += 1;
+                    if (l.permAction && !remarks.includes(l.permAction)) remarks.push(l.permAction);
+                }
+            });
+
+            const mcBdMin = dailyBdMin.reduce((a, b) => a + b, 0);
+            const mcBdHrs = mcBdMin / 60;
+            const mcBdOcc = dailyBdOcc.reduce((a, b) => a + b, 0);
+            const mcPlannedHrs = 720; 
+            const mcPlannedMin = mcPlannedHrs * 60;
+
+            const mcAvail = mcPlannedMin > 0 ? (((mcPlannedMin - mcBdMin) / mcPlannedMin) * 100) : 100;
+            const mttr = mcBdOcc > 0 ? (mcBdHrs / mcBdOcc).toFixed(2) : '0.00';
+            const mtbf = mcBdOcc > 0 ? ((mcPlannedHrs - mcBdHrs) / mcBdOcc).toFixed(2) : mcPlannedHrs.toFixed(2);
+
+            const subRows = [
+                { label: 'BD Min', vals: dailyBdMin },
+                { label: 'BD Occ', vals: dailyBdOcc },
+                { label: '# of shift', vals: dailyPlanned },
+                { label: '%', vals: [] }
+            ];
+
+            const mcDetailDisplay = mc.mcNo ? `${mc.mcNo} - ${mc.name}` : mc.name;
+
+            subRows.forEach((sr, rIdx) => {
+                let tr = '<tr>';
+                if (rIdx === 0) {
+                    tr += `<td rowspan="4" style="vertical-align:middle; text-align:center;">${idx + 1}</td>
+                           <td rowspan="4" style="vertical-align:middle; text-align:center;">${mcDetailDisplay}</td>`;
+                }
+                tr += `<td style="vertical-align:middle; font-weight:normal; text-align:center;">${sr.label}</td>`;
+
+                for (let i = 0; i < daysInMonth; i++) {
+                    if (sr.label === '%') {
+                        const p = dailyPlanned[i];
+                        const b = dailyBdMin[i];
+                        const pct = p > 0 ? (((p - b) / p) * 100).toFixed(0) : 100;
+                        tr += `<td>${pct}</td>`;
+                    } else if (sr.label === 'BD Min') {
+                        const val = sr.vals[i];
+                        const bgStyle = val > 0 ? 'background-color:#FFC7CE;' : '';
+                        tr += `<td style="${bgStyle}">${val > 0 ? val : ''}</td>`;
+                    } else if (sr.label === 'BD Occ') {
+                        const val = sr.vals[i];
+                        const bgStyle = val > 0 ? 'background-color:#E2EFDA;' : '';
+                        tr += `<td style="${bgStyle}">${val > 0 ? val : ''}</td>`;
+                    } else {
+                        tr += `<td>${sr.vals[i] || 0}</td>`;
+                    }
+                }
+
+                if (rIdx === 0) {
+                    const availClass = mcAvail >= 90 ? 'bg-green' : 'bg-red';
+                    tr += `
+                        <td rowspan="4" style="vertical-align:middle; text-align:center;">${mcBdMin}</td>
+                        <td rowspan="4" style="vertical-align:middle; text-align:center;">${mcBdHrs.toFixed(2)}</td>
+                        <td rowspan="4" style="vertical-align:middle; text-align:center;">${mcBdOcc}</td>
+                        <td rowspan="4" style="vertical-align:middle; text-align:center;">${mcPlannedHrs.toFixed(2)}</td>
+                        <td rowspan="4" class="${availClass}" style="vertical-align:middle; text-align:center;">${mcAvail.toFixed(2)}%</td>
+                        <td rowspan="4" style="vertical-align:middle; text-align:center;">${mttr}</td>
+                        <td rowspan="4" style="vertical-align:middle; text-align:center;">${mtbf}</td>
+                        <td rowspan="4" style="vertical-align:middle; text-align:center;">${remarks.join('; ')}</td>
+                    `;
+                }
+                tr += '</tr>';
+                tableHTML += tr;
+            });
+        });
+
+        tableHTML += '</tbody>';
+        table.innerHTML = tableHTML;
+
+        const kpi = getKpiMetrics();
+        const kpiTable = document.getElementById('kpiSummaryTable');
+        kpiTable.innerHTML = `
+            <tr><td class="bg-blue">Total BD Hrs</td><td class="bg-yellow">${kpi.overallBdHrs}</td></tr>
+            <tr><td class="bg-green">Total BD Occurance</td><td class="bg-yellow">${kpi.totalBdOcc}</td></tr>
+            <tr><td class="bg-blue">OVERALL MTTR</td><td class="bg-yellow">${kpi.overallMttr}</td></tr>
+            <tr><td class="bg-green">OVERALL MTBF</td><td class="bg-yellow">${kpi.overallMtbf}</td></tr>
+            <tr><td class="bg-blue">CRITICAL MCs MTTR</td><td class="bg-yellow">${kpi.critMttr}</td></tr>
+            <tr><td class="bg-green">CRITICAL MCs MTBF</td><td class="bg-yellow">${kpi.critMtbf}</td></tr>
+            <tr><td class="bg-blue">Overall Availability %</td><td class="bg-yellow">${kpi.overallAvail}%</td></tr>
+            <tr><td class="bg-orange">CRITICAL MCs Availability %</td><td class="bg-yellow">${kpi.critAvail}%</td></tr>
+            <tr><td class="bg-green">> 98% availability</td><td class="bg-yellow">${kpi.countGt98}</td></tr>
+            <tr><td class="bg-green">90 - 98 % Availability</td><td class="bg-yellow">${kpi.count90to98}</td></tr>
+            <tr><td class="bg-green">&lt; 90 % Availability</td><td class="bg-yellow">${kpi.countLt90}</td></tr>
+        `;
+    }
+
+    function renderBreakdownTrend() {
+        const year = parseInt(document.getElementById('selectYear').value);
+        const month = parseInt(document.getElementById('selectMonth').value);
+        const monthName = new Date(year, month, 1).toLocaleString('en-US', { month: 'short' });
+        const shortYear = String(year).slice(-2);
+
+        document.getElementById('trendMonthYearText').innerText = `${monthName}-${shortYear}`;
+
+        const dailyTotals = Array(31).fill(0);
+        const machineDailyCounts = {};
+
+        machineMaster.forEach(mc => {
+            machineDailyCounts[mc.name] = Array(31).fill(0);
+        });
+
+        breakdownLogs.forEach(l => {
+            const d = new Date(l.date);
+            if (d.getFullYear() === year && d.getMonth() === month) {
+                const dayNum = d.getDate();
+                if (dayNum >= 1 && dayNum <= 31) {
+                    dailyTotals[dayNum - 1] += 1;
+                    if (machineDailyCounts[l.mcName]) {
+                        machineDailyCounts[l.mcName][dayNum - 1] += 1;
+                    }
+                }
+            }
+        });
+
+        drawTrendCanvas(dailyTotals);
+
+        const totalTable = document.getElementById('trendTotalTable');
+        let totalHead = `<tr><th style="width:180px; text-align:left;">DATE</th>`;
+        let totalBody = `<tr><td style="font-weight:bold; text-align:left;">Total No. of Breakdown</td>`;
+
+        for (let i = 1; i <= 31; i++) {
+            totalHead += `<th style="width:30px;">${i}</th>`;
+            const count = dailyTotals[i - 1];
+            totalBody += `<td style="${count > 0 ? 'font-weight:bold; color:red; background:#ffe6e6;' : ''}">${count || ''}</td>`;
+        }
+        totalHead += `</tr>`;
+        totalBody += `</tr>`;
+        totalTable.innerHTML = totalHead + totalBody;
+
+        const mcTable = document.getElementById('trendMachineTable');
+        let mcHeader = `<tr><th style="width:200px; text-align:left;">Equipment / Machine Name</th>`;
+        for (let i = 1; i <= 31; i++) {
+            mcHeader += `<th style="width:30px;">${i}</th>`;
+        }
+        mcHeader += `</tr>`;
+
+        let mcRows = '';
+        machineMaster.forEach(mc => {
+            mcRows += `<tr><td style="text-align:left; font-weight:bold;">${mc.name}</td>`;
+            for (let i = 1; i <= 31; i++) {
+                const count = machineDailyCounts[mc.name][i - 1];
+                mcRows += `<td>${count > 0 ? count : ''}</td>`;
+            }
+            mcRows += `</tr>`;
+        });
+
+        mcTable.innerHTML = mcHeader + mcRows;
+    }
+
+    function drawTrendCanvas(dailyTotals) {
+        const canvas = document.getElementById('trendCanvas');
+        if (!canvas) return;
+        const ctx = canvas.getContext('2d');
+
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+        const paddingLeft = 80;
+        const paddingRight = 20;
+        const paddingTop = 20;
+        const paddingBottom = 40;
+
+        const chartWidth = canvas.width - paddingLeft - paddingRight;
+        const chartHeight = canvas.height - paddingTop - paddingBottom;
+
+        const maxY = 50;
+        const ySteps = 10;
+
+        ctx.strokeStyle = '#b0b0b0';
+        ctx.lineWidth = 1;
+        ctx.fillStyle = '#000';
+        ctx.font = '11px Segoe UI, sans-serif';
+        ctx.textAlign = 'right';
+        ctx.textBaseline = 'middle';
+
+        for (let i = 0; i <= ySteps; i++) {
+            const val = i * 5;
+            const y = paddingTop + chartHeight - (val / maxY) * chartHeight;
+
+            ctx.beginPath();
+            ctx.setLineDash([2, 2]);
+            ctx.moveTo(paddingLeft, y);
+            ctx.lineTo(paddingLeft + chartWidth, y);
+            ctx.stroke();
+
+            ctx.setLineDash([]);
+            ctx.fillText(val, paddingLeft - 10, y);
+        }
+
+        const xStep = chartWidth / 31;
+        ctx.textAlign = 'center';
+
+        for (let day = 1; day <= 31; day++) {
+            const x = paddingLeft + (day - 0.5) * xStep;
+
+            ctx.beginPath();
+            ctx.setLineDash([2, 2]);
+            ctx.moveTo(x, paddingTop);
+            ctx.lineTo(x, paddingTop + chartHeight);
+            ctx.stroke();
+        }
+
+        ctx.save();
+        ctx.translate(20, canvas.height / 2);
+        ctx.rotate(-Math.PI / 2);
+        ctx.textAlign = 'center';
+        ctx.font = 'bold 12px Segoe UI, sans-serif';
+        ctx.fillText('NUMBER OF BREAKDOWNS', 0, 0);
+        ctx.restore();
+
+        ctx.font = 'bold 11px Segoe UI, sans-serif';
+        ctx.fillText('DATE', paddingLeft - 40, paddingTop + chartHeight + 15);
+
+        const points = [];
+        for (let day = 1; day <= 31; day++) {
+            const count = dailyTotals[day - 1];
+            const x = paddingLeft + (day - 0.5) * xStep;
+            const clampedVal = Math.min(count, maxY);
+            const y = paddingTop + chartHeight - (clampedVal / maxY) * chartHeight;
+            points.push({ x, y, count, day });
+        }
+
+        ctx.setLineDash([]);
+        ctx.beginPath();
+        ctx.strokeStyle = '#1f4e78';
+        ctx.lineWidth = 2;
+        let started = false;
+
+        points.forEach(pt => {
+            if (pt.count > 0) {
+                if (!started) {
+                    ctx.moveTo(pt.x, pt.y);
+                    started = true;
+                } else {
+                    ctx.lineTo(pt.x, pt.y);
+                }
+            }
+        });
+        ctx.stroke();
+
+        points.forEach(pt => {
+            if (pt.count > 0) {
+                ctx.beginPath();
+                ctx.arc(pt.x, pt.y, 5, 0, Math.PI * 2);
+                ctx.fillStyle = '#d9534f';
+                ctx.fill();
+                ctx.strokeStyle = '#000';
+                ctx.lineWidth = 1;
+                ctx.stroke();
+
+                ctx.fillStyle = '#000';
+                ctx.font = 'bold 11px Segoe UI, sans-serif';
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'bottom';
+                ctx.fillText(pt.count, pt.x, pt.y - 6);
+            }
+        });
+    }
+
+    async function exportMachineComparisonExcel() {
+        const workbook = new ExcelJS.Workbook();
+        const sheet = workbook.addWorksheet("Machine_Comparison");
+
+        const fDate = document.getElementById('compareFromDate').value || 'Start';
+        const fTime = document.getElementById('compareFromTime').value || '00:00';
+        const tDate = document.getElementById('compareToDate').value || 'End';
+        const tTime = document.getElementById('compareToTime').value || '23:59';
+
+        sheet.addRow(["MACHINE COMPARISON REPORT"]).font = { bold: true, size: 14 };
+        sheet.addRow([`Filtered Date & Time Range: ${fDate} ${fTime} to ${tDate} ${tTime}`]).font = { italic: true, size: 10 };
+        sheet.addRow([]);
+
+        const canvas = document.getElementById('compareCanvas');
+        if (canvas) {
+            const chartBase64 = canvas.toDataURL('image/png').split(',')[1];
+            const chartImageId = workbook.addImage({
+                base64: chartBase64,
+                extension: 'png',
+            });
+            sheet.addImage(chartImageId, {
+                tl: { col: 0, row: 3 },
+                ext: { width: 850, height: 260 }
+            });
+            for (let i = 0; i < 15; i++) sheet.addRow([]);
+        }
+
+        const headers = [
+            'Machine Name', 'Machine No.', 'Critical Mc?', 'Breakdown Loss (Mins)',
+            'Breakdown Loss (Hrs)', 'Occurrences', 'Availability (%)', 'MTTR (Hrs)', 'MTBF (Hrs)'
+        ];
+
+        const headerRow = sheet.addRow(headers);
+        headerRow.font = { bold: true, size: 10, color: { argb: 'FFFFFF' } };
+        headerRow.alignment = { vertical: 'middle', horizontal: 'center' };
+        for (let c = 1; c <= headers.length; c++) {
+            const cell = headerRow.getCell(c);
+            cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: '1F4E78' } };
+            cell.border = { top: {style:'thin'}, left: {style:'thin'}, bottom: {style:'thin'}, right: {style:'thin'} };
+        }
+
+        const selectedCheckboxes = document.querySelectorAll('.chk-compare-mc:checked');
+        const selectedMcNames = Array.from(selectedCheckboxes).map(cb => cb.value);
+
+        selectedMcNames.forEach(mcName => {
+            const mcObj = machineMaster.find(m => m.name === mcName) || { mcNo: '', isCritical: false };
+            let totalBdMin = 0;
+            let totalOcc = 0;
+
+            breakdownLogs.forEach(l => {
+                if (l.mcName === mcName && isLogInDateTimeRange(l, 'compareFromDate', 'compareFromTime', 'compareToDate', 'compareToTime')) {
+                    totalBdMin += Number(l.lossTime);
+                    totalOcc += 1;
+                }
+            });
+
+            const plannedHrs = 720;
+            const plannedMin = plannedHrs * 60;
+            const bdHrs = totalBdMin / 60;
+            const avail = plannedMin > 0 ? (((plannedMin - totalBdMin) / plannedMin) * 100) : 100;
+            const mttr = totalOcc > 0 ? (bdHrs / totalOcc) : 0;
+            const mtbf = totalOcc > 0 ? ((plannedHrs - bdHrs) / totalOcc) : plannedHrs;
+
+            const row = sheet.addRow([
+                mcName, mcObj.mcNo || '-', mcObj.isCritical ? 'Yes' : 'No',
+                totalBdMin, Number(bdHrs.toFixed(2)), totalOcc,
+                Number((avail/100).toFixed(4)), Number(mttr.toFixed(2)), Number(mtbf.toFixed(2))
+            ]);
+            row.alignment = { vertical: 'middle', horizontal: 'center' };
+            row.getCell(1).alignment = { vertical: 'middle', horizontal: 'left' };
+
+            for (let c = 1; c <= headers.length; c++) {
+                const cell = row.getCell(c);
+                cell.border = { top: {style:'thin'}, left: {style:'thin'}, bottom: {style:'thin'}, right: {style:'thin'} };
+                if (c === 7) {
+                    cell.numFmt = '0.00%';
+                    if (avail >= 90) {
+                        cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: '92D050' } };
+                    } else {
+                        cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFC7CE' } };
+                    }
+                }
+            }
+        });
+
+        sheet.getColumn(1).width = 25;
+        for(let c=2; c<=headers.length; c++) sheet.getColumn(c).width = 16;
+
+        const buffer = await workbook.xlsx.writeBuffer();
+        saveAs(new Blob([buffer]), `Machine_Comparison_${fDate}_to_${tDate}.xlsx`);
+    }
+
+    async function exportQuadrantProfilingExcel() {
+        const workbook = new ExcelJS.Workbook();
+        const sheet = workbook.addWorksheet("Quadrant_Profiling");
+
+        const fDate = document.getElementById('quadrantFromDate').value || 'Start';
+        const fTime = document.getElementById('quadrantFromTime').value || '00:00';
+        const tDate = document.getElementById('quadrantToDate').value || 'End';
+        const tTime = document.getElementById('quadrantToTime').value || '23:59';
+
+        const threshOcc = parseFloat(document.getElementById('thresholdOcc').value) || 2;
+        const threshDt = parseFloat(document.getElementById('thresholdDt').value) || 30;
+
+        sheet.addRow(["QUADRANT PROFILING REPORT"]).font = { bold: true, size: 14 };
+        sheet.addRow([`Range: ${fDate} ${fTime} to ${tDate} ${tTime} | Occurrence Threshold: ${threshOcc} | Downtime Threshold: ${threshDt} Mins`]).font = { italic: true, size: 10 };
+        sheet.addRow([]);
+
+        const canvas = document.getElementById('quadrantCanvas');
+        if (canvas) {
+            const chartBase64 = canvas.toDataURL('image/png').split(',')[1];
+            const chartImageId = workbook.addImage({
+                base64: chartBase64,
+                extension: 'png',
+            });
+            sheet.addImage(chartImageId, {
+                tl: { col: 0, row: 3 },
+                ext: { width: 800, height: 280 }
+            });
+            for (let i = 0; i < 16; i++) sheet.addRow([]);
+        }
+
+        const selectedMc = document.getElementById('quadrantFilterMachine').value;
+        const q1List = [], q2List = [], q3List = [], q4List = [];
+
+        machineMaster.forEach(mc => {
+            if (selectedMc && mc.name !== selectedMc) return;
+            let occ = 0, dtMins = 0;
+            breakdownLogs.forEach(l => {
+                if (l.mcName === mc.name && isLogInDateTimeRange(l, 'quadrantFromDate', 'quadrantFromTime', 'quadrantToDate', 'quadrantToTime')) {
+                    occ += 1;
+                    dtMins += Number(l.lossTime);
+                }
+            });
+
+            const item = { name: mc.name, mcNo: mc.mcNo, occ, dtMins };
+            if (occ >= threshOcc && dtMins >= threshDt) q1List.push(item);
+            else if (occ < threshOcc && dtMins >= threshDt) q2List.push(item);
+            else if (occ >= threshOcc && dtMins < threshDt) q3List.push(item);
+            else q4List.push(item);
+        });
+
+        const addQuadrantSection = (title, color, items) => {
+            const headRow = sheet.addRow([title, '', '']);
+            sheet.mergeCells(headRow.number, 1, headRow.number, 3);
+            headRow.font = { bold: true, size: 11, color: { argb: 'FFFFFF' } };
+            headRow.getCell(1).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: color } };
+
+            const colRow = sheet.addRow(['Machine Name', 'Occurrences', 'Downtime (Mins)']);
+            colRow.font = { bold: true, size: 9 };
+            colRow.alignment = { horizontal: 'center' };
+            for (let c = 1; c <= 3; c++) {
+                colRow.getCell(c).border = { top: {style:'thin'}, left: {style:'thin'}, bottom: {style:'thin'}, right: {style:'thin'} };
+            }
+
+            if (items.length === 0) {
+                const emptyRow = sheet.addRow(['No machines in this quadrant', '', '']);
+                sheet.mergeCells(emptyRow.number, 1, emptyRow.number, 3);
+                emptyRow.font = { italic: true, size: 9 };
+            } else {
+                items.forEach(it => {
+                    const r = sheet.addRow([it.name + (it.mcNo ? ` (${it.mcNo})` : ''), it.occ, it.dtMins]);
+                    r.alignment = { horizontal: 'center' };
+                    r.getCell(1).alignment = { horizontal: 'left' };
+                    for (let c = 1; c <= 3; c++) {
+                        r.getCell(c).border = { top: {style:'thin'}, left: {style:'thin'}, bottom: {style:'thin'}, right: {style:'thin'} };
+                    }
+                });
+            }
+            sheet.addRow([]);
+        };
+
+        addQuadrantSection('Quadrant 1: High Occurrences, High Downtime (Critical Focus Area)', 'D9534F', q1List);
+        addQuadrantSection('Quadrant 2: Low Occurrences, High Downtime (Major / Chronic Breakdowns)', 'F0AD4E', q2List);
+        addQuadrantSection('Quadrant 3: High Occurrences, Low Downtime (Frequent Minor Stops)', '337AB7', q3List);
+        addQuadrantSection('Quadrant 4: Low Occurrences, Low Downtime (Normal / Low Risk)', '5CB85C', q4List);
+
+        sheet.getColumn(1).width = 35;
+        sheet.getColumn(2).width = 18;
+        sheet.getColumn(3).width = 18;
+
+        const buffer = await workbook.xlsx.writeBuffer();
+        saveAs(new Blob([buffer]), `Quadrant_Profiling_${fDate}_to_${tDate}.xlsx`);
+    }
+
+    async function exportBreakdownLogExcel() {
+        const year = parseInt(document.getElementById('selectYear').value);
+        const month = parseInt(document.getElementById('selectMonth').value);
+        const monthName = new Date(year, month, 1).toLocaleString('en-US', { month: 'short' });
+
+        const workbook = new ExcelJS.Workbook();
+        const sheet = workbook.addWorksheet(`BD_Log_${monthName}_${year}`);
+
+        const headers = [
+            'Sl.No', 'Date & Time', 'Shift (1,2,3)', 'Total Operating Time in min',
+            'Machine Name', 'Machine Number', 'Nature of Issue (Customer Voice) Alarm Display',
+            'Type of issue (M/E)', 'Breakdown Loss time in mins', 'Status (STOP/RUN)',
+            'Immediate Corrective Action', 'Permanent Corrective Action *',
+            'Counter Measure', 'Machine Availablity (C-H)/C', 'Shift Engineer Name',
+            'Spares Consumed details', 'PCA Responsibility Engineer Name', 'PCA Status'
+        ];
+
+        const headerRow = sheet.addRow(headers);
+        headerRow.font = { bold: true, size: 9 };
+        headerRow.alignment = { vertical: 'middle', horizontal: 'center', wrapText: true };
+
+        for (let i = 1; i <= headers.length; i++) {
+            const cell = headerRow.getCell(i);
+            cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: '8EA9DB' } };
+            cell.border = { top: {style:'thin'}, left: {style:'thin'}, bottom: {style:'thin'}, right: {style:'thin'} };
+        }
+
+        breakdownLogs.sort((a, b) => new Date(`${a.date}T${a.time||'00:00'}`) - new Date(`${b.date}T${b.time||'00:00'}`));
+        let slNo = 1;
+
+        breakdownLogs.forEach(l => {
+            const d = new Date(l.date);
+            if (d.getFullYear() === year && d.getMonth() === month) {
+                const formattedDate = `${String(d.getDate()).padStart(2, '0')}/${d.toLocaleString('en-US', {month:'short'})}/${String(d.getFullYear()).slice(-2)}${l.time ? ' '+l.time : ''}`;
+                const row = sheet.addRow([
+                    slNo++, formattedDate, Number(l.shift), Number(l.opTime),
+                    l.mcName, l.mcNo || '', l.issue, l.typeIssue, Number(l.lossTime),
+                    l.status, l.immAction, l.permAction, l.counterMeasure,
+                    Number(l.avail) / 100, l.shiftEng, l.spares, l.respEng, l.pcaStatus
+                ]);
+
+                row.font = { size: 9 };
+                row.alignment = { vertical: 'middle', horizontal: 'center' };
+
+                for (let c = 1; c <= headers.length; c++) {
+                    const cell = row.getCell(c);
+                    cell.border = { top: {style:'thin'}, left: {style:'thin'}, bottom: {style:'thin'}, right: {style:'thin'} };
+                    if (c === 14) {
+                        cell.numFmt = '0.00%';
+                        cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: '92D050' } };
+                        cell.font = { bold: true };
+                    }
+                }
+            }
+        });
+
+        const buffer = await workbook.xlsx.writeBuffer();
+        saveAs(new Blob([buffer]), `Breakdown_Log_${monthName}_${year}.xlsx`);
+    }
+
+    async function exportAvailabilityExcel() {
+        const year = parseInt(document.getElementById('selectYear').value);
+        const month = parseInt(document.getElementById('selectMonth').value);
+        const monthName = new Date(year, month, 1).toLocaleString('en-US', { month: 'short' });
+
+        const workbook = new ExcelJS.Workbook();
+        const sheet = workbook.addWorksheet(`Availability_${monthName}_${year}`);
+        const daysInMonth = new Date(year, month + 1, 0).getDate();
+
+        const datesList = [];
+        for (let d = 1; d <= daysInMonth; d++) datesList.push(new Date(year, month, d));
+
+        const fixedLeft = ['Sl. No', 'Machine Details', 'Day'];
+        const fixedRight = ['Cum. DT in Min.', 'Cum. DT in Hrs.', 'Cum. BD Occ', 'Planned Hrs', 'Mc Availability', 'MTTR', 'MTBF', 'Remarks'];
+
+        const dateHeaderRow = [
+            ...fixedLeft,
+            ...datesList.map(d => `${String(d.getDate()).padStart(2, '0')}-${d.toLocaleString('en-US', {month:'short'})}-${String(d.getFullYear()).slice(-2)}`),
+            ...fixedRight
+        ];
+
+        const weekHeaderRow = ['', '', 'Week'];
+        datesList.forEach(d => weekHeaderRow.push(`Wk ${getContinuousWeekNumber(d)}`));
+
+        sheet.addRow(dateHeaderRow);
+        sheet.addRow(weekHeaderRow);
+
+        const totalCols = dateHeaderRow.length;
+
+        const row1 = sheet.getRow(1);
+        row1.font = { bold: true, size: 9 };
+        row1.alignment = { vertical: 'middle', horizontal: 'center' };
+        for (let c = 1; c <= totalCols; c++) {
+            const cell = row1.getCell(c);
+            cell.border = { top: {style:'thin'}, left: {style:'thin'}, bottom: {style:'thin'}, right: {style:'thin'} };
+            if (c >= 4 && c < 4 + daysInMonth) {
+                cell.alignment = { textRotation: 90, vertical: 'middle', horizontal: 'center' };
+            }
+        }
+
+        let currentWk = null;
+        let wkStartCol = 4;
+        const weekColors = ['E2EFDA', 'E2EFDA', 'E2EFDA', 'E2EFDA', 'E2EFDA'];
+
+        for (let i = 0; i < datesList.length; i++) {
+            const colIdx = 4 + i;
+            const wkNum = getContinuousWeekNumber(datesList[i]);
+            const wkName = `Wk ${wkNum}`;
+
+            if (wkName !== currentWk) {
+                if (currentWk !== null && wkStartCol < colIdx - 1) {
+                    sheet.mergeCells(2, wkStartCol, 2, colIdx - 1);
+                }
+                currentWk = wkName;
+                wkStartCol = colIdx;
+            }
+
+            const cell = sheet.getCell(2, colIdx);
+            cell.value = wkName;
+            cell.alignment = { vertical: 'middle', horizontal: 'center' };
+            cell.font = { bold: true, size: 9 };
+            cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: weekColors[(wkNum - 1) % weekColors.length] } };
+            cell.border = { top: {style:'thin'}, left: {style:'thin'}, bottom: {style:'thin'}, right: {style:'thin'} };
+        }
+        if (wkStartCol < 4 + datesList.length - 1) {
+            sheet.mergeCells(2, wkStartCol, 2, 4 + datesList.length - 1);
+        }
+
+        let currentRow = 3;
+        machineMaster.forEach((mc, index) => {
+            const startMcRow = currentRow;
+            const dailyBdMin = Array(daysInMonth).fill(0);
+            const dailyBdOcc = Array(daysInMonth).fill(0);
+            const dailyPlanned = Array(daysInMonth).fill(1440);
+            let remarks = [];
+
+            breakdownLogs.forEach(l => {
+                const d = new Date(l.date);
+                if (l.mcName === mc.name && d.getFullYear() === year && d.getMonth() === month) {
+                    const dayIdx = d.getDate() - 1;
+                    dailyBdMin[dayIdx] += Number(l.lossTime);
+                    dailyBdOcc[dayIdx] += 1;
+                    if (l.permAction && !remarks.includes(l.permAction)) remarks.push(l.permAction);
+                }
+            });
+
+            const mcBdMin = dailyBdMin.reduce((a, b) => a + b, 0);
+            const mcBdHrs = mcBdMin / 60;
+            const mcBdOcc = dailyBdOcc.reduce((a, b) => a + b, 0);
+            const mcPlannedHrs = 720;
+            const mcPlannedMin = mcPlannedHrs * 60;
+
+            const mcAvail = mcPlannedMin > 0 ? (((mcPlannedMin - mcBdMin) / mcPlannedMin) * 100) : 100;
+            const mttr = mcBdOcc > 0 ? (mcBdHrs / mcBdOcc).toFixed(2) : '0.00';
+            const mtbf = mcBdOcc > 0 ? ((mcPlannedHrs - mcBdHrs) / mcBdOcc).toFixed(2) : mcPlannedHrs.toFixed(2);
+
+            const rowsToInsert = [
+                { label: 'BD Min', vals: dailyBdMin },
+                { label: 'BD Occ', vals: dailyBdOcc },
+                { label: '# of shift', vals: dailyPlanned },
+                { label: '%', vals: [] }
+            ];
+
+            const mcDetailText = mc.mcNo ? `${mc.mcNo} - ${mc.name}` : mc.name;
+
+            rowsToInsert.forEach((r, rowOffset) => {
+                const rowData = [
+                    rowOffset === 0 ? index + 1 : '',
+                    rowOffset === 0 ? mcDetailText : '',
+                    r.label
+                ];
+
+                for (let i = 0; i < daysInMonth; i++) {
+                    if (r.label === '%') {
+                        const p = dailyPlanned[i];
+                        const b = dailyBdMin[i];
+                        rowData.push(p > 0 ? Number((((p - b) / p) * 100).toFixed(0)) : 100);
+                    } else if (r.label === 'BD Min' || r.label === 'BD Occ') {
+                        rowData.push(r.vals[i] > 0 ? r.vals[i] : '');
+                    } else {
+                        rowData.push(r.vals[i] || 0);
+                    }
+                }
+
+                if (rowOffset === 0) {
+                    rowData.push(mcBdMin, Number(mcBdHrs.toFixed(2)), mcBdOcc, Number(mcPlannedHrs.toFixed(2)), Number((mcAvail/100).toFixed(4)), Number(mttr), Number(mtbf), remarks.join('; '));
+                } else {
+                    rowData.push('', '', '', '', '', '', '', '');
+                }
+
+                const addedRow = sheet.addRow(rowData);
+                addedRow.font = { size: 9 };
+                addedRow.alignment = { vertical: 'middle', horizontal: 'center' };
+
+                for (let c = 1; c <= totalCols; c++) {
+                    const cell = addedRow.getCell(c);
+                    cell.border = { top: {style:'thin'}, left: {style:'thin'}, bottom: {style:'thin'}, right: {style:'thin'} };
+
+                    if (r.label === 'BD Min' && c >= 4 && c < 4 + daysInMonth && r.vals[c - 4] > 0) {
+                        cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFC7CE' } };
+                    } else if (r.label === 'BD Occ' && c >= 4 && c < 4 + daysInMonth && r.vals[c - 4] > 0) {
+                        cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'E2EFDA' } };
+                    }
+                }
+            });
+
+            sheet.mergeCells(startMcRow, 1, startMcRow + 3, 1);
+            sheet.mergeCells(startMcRow, 2, startMcRow + 3, 2);
+
+            for (let c = 0; c < 8; c++) {
+                const colIdx = 4 + daysInMonth + c;
+                sheet.mergeCells(startMcRow, colIdx, startMcRow + 3, colIdx);
+            }
+
+            const availCell = sheet.getCell(startMcRow, 3 + daysInMonth + 5);
+            availCell.numFmt = '0.00%';
+            if (mcAvail >= 90) {
+                availCell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: '92D050' } };
+                availCell.font = { bold: true };
+            } else {
+                availCell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFC7CE' } };
+                availCell.font = { bold: true };
+            }
+
+            currentRow += 4;
+        });
+
+        sheet.addRow([]);
+        sheet.addRow([]);
+
+        const kpi = getKpiMetrics();
+
+        const kpiRows = [
+            { title: 'Total BD Hrs', val: Number(kpi.overallBdHrs), color: '00B0F0' },
+            { title: 'Total BD Occurance', val: Number(kpi.totalBdOcc), color: '92D050' },
+            { title: 'OVERALL MTTR', val: Number(kpi.overallMttr), color: '00B0F0' },
+            { title: 'OVERALL MTBF', val: Number(kpi.overallMtbf), color: '92D050' },
+            { title: 'CRITICAL MCs MTTR', val: Number(kpi.critMttr), color: '00B0F0' },
+            { title: 'CRITICAL MCs MTBF', val: Number(kpi.critMtbf), color: '92D050' },
+            { title: 'Overall Availability %', val: Number((kpi.overallAvail / 100).toFixed(4)), color: '00B0F0', isPct: true },
+            { title: 'CRITICAL MCs Availability %', val: Number((kpi.critAvail / 100).toFixed(4)), color: 'F8CBAD', isPct: true },
+            { title: '> 98% availability', val: Number(kpi.countGt98), color: '92D050' },
+            { title: '90 - 98 % Availability', val: Number(kpi.count90to98), color: '92D050' },
+            { title: '< 90 % Availability', val: Number(kpi.countLt90), color: '92D050' }
+        ];
+
+        kpiRows.forEach(item => {
+            const r = sheet.addRow([item.title, item.val]);
+            r.font = { bold: true, size: 10 };
+            
+            const cell1 = r.getCell(1);
+            cell1.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: item.color } };
+            cell1.alignment = { vertical: 'middle', horizontal: 'center' };
+            cell1.border = { top: {style:'thin'}, left: {style:'thin'}, bottom: {style:'thin'}, right: {style:'thin'} };
+
+            const cell2 = r.getCell(2);
+            cell2.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFFF00' } };
+            cell2.alignment = { vertical: 'middle', horizontal: 'center' };
+            cell2.border = { top: {style:'thin'}, left: {style:'thin'}, bottom: {style:'thin'}, right: {style:'thin'} };
+
+            if (item.isPct) {
+                cell2.numFmt = '0.00%';
+            }
+        });
+
+        const buffer = await workbook.xlsx.writeBuffer();
+        saveAs(new Blob([buffer]), `Availability_Matrix_${monthName}_${year}.xlsx`);
+    }
+
+    async function exportBreakdownTrendExcel() {
+        const year = parseInt(document.getElementById('selectYear').value);
+        const month = parseInt(document.getElementById('selectMonth').value);
+        const monthName = new Date(year, month, 1).toLocaleString('en-US', { month: 'short' });
+
+        const workbook = new ExcelJS.Workbook();
+        const sheet = workbook.addWorksheet(`Trend_${monthName}_${year}`);
+
+        sheet.addRow(["DELPHI-TVS TECHNOLOGIES"]).font = { bold: true, size: 14 };
+        sheet.addRow(["BREAKDOWN TREND REPORT"]).font = { bold: true, size: 12 };
+        sheet.addRow([`Month & Year: ${monthName}-${year}`]).font = { italic: true, size: 10 };
+        sheet.addRow([]);
+
+        const canvas = document.getElementById('trendCanvas');
+        if (canvas) {
+            const chartBase64 = canvas.toDataURL('image/png').split(',')[1];
+            const chartImageId = workbook.addImage({
+                base64: chartBase64,
+                extension: 'png',
+            });
+            sheet.addImage(chartImageId, {
+                tl: { col: 0, row: 4 },
+                ext: { width: 850, height: 260 }
+            });
+            for (let i = 0; i < 15; i++) sheet.addRow([]);
+        }
+
+        const dailyTotals = Array(31).fill(0);
+        const machineDailyCounts = {};
+
+        machineMaster.forEach(mc => {
+            machineDailyCounts[mc.name] = Array(31).fill(0);
+        });
+
+        breakdownLogs.forEach(l => {
+            const d = new Date(l.date);
+            if (d.getFullYear() === year && d.getMonth() === month) {
+                const dayNum = d.getDate();
+                if (dayNum >= 1 && dayNum <= 31) {
+                    dailyTotals[dayNum - 1] += 1;
+                    if (machineDailyCounts[l.mcName]) {
+                        machineDailyCounts[l.mcName][dayNum - 1] += 1;
+                    }
+                }
+            }
+        });
+
+        const headerRow = ['DATE', ...Array.from({ length: 31 }, (_, i) => i + 1)];
+        const r1 = sheet.addRow(headerRow);
+        r1.font = { bold: true, size: 9 };
+        r1.alignment = { horizontal: 'center' };
+
+        const totalRow = ['Total No. of Breakdown', ...dailyTotals];
+        const r2 = sheet.addRow(totalRow);
+        r2.font = { bold: true, size: 9 };
+        r2.alignment = { horizontal: 'center' };
+
+        sheet.addRow([]);
+        const mcHeader = ['Equipment / Machine Name', ...Array.from({ length: 31 }, (_, i) => i + 1)];
+        const r3 = sheet.addRow(mcHeader);
+        r3.font = { bold: true, size: 9 };
+        r3.alignment = { horizontal: 'center' };
+
+        machineMaster.forEach(mc => {
+            const row = sheet.addRow([mc.name, ...machineDailyCounts[mc.name].map(v => v || '')]);
+            row.font = { size: 9 };
+            row.alignment = { horizontal: 'center' };
+            row.getCell(1).alignment = { horizontal: 'left' };
+        });
+
+        sheet.getColumn(1).width = 30;
+
+        const buffer = await workbook.xlsx.writeBuffer();
+        saveAs(new Blob([buffer]), `Breakdown_Trend_${monthName}_${year}.xlsx`);
+    }
+
+    window.onload = function() {
+        populateYearDropdown();
+        populateMachineDropdowns();
+        onPeriodChange();
+    };
+</script>
+</body>
+</html>
