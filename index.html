@@ -207,6 +207,20 @@
             font-weight: normal;
             cursor: pointer;
         }
+        
+        /* Styles for Copy Feature */
+        .copy-preview-box {
+            width: 100%;
+            height: 220px;
+            margin-top: 10px;
+            font-family: monospace;
+            font-size: 12px;
+            background: #f9f9f9;
+            border: 1px solid #ccc;
+            padding: 10px;
+            box-sizing: border-box;
+            white-space: pre-wrap;
+        }
     </style>
 </head>
 <body>
@@ -245,6 +259,7 @@
 
     <div class="nav-tabs">
         <button class="tab-btn active" onclick="switchTab('breakdownTab', this)">Breakdown Log Sheet</button>
+        <button class="tab-btn" onclick="switchTab('copyTab', this)">📋 Copy Feature</button>
         <button class="tab-btn" onclick="switchTab('availabilityTab', this)">Availability Matrix & KPI Report</button>
         <button class="tab-btn" onclick="switchTab('trendTab', this)">Breakdown Trend Sheet</button>
         <button class="tab-btn" onclick="switchTab('compareTab', this)">Machine Comparison</button>
@@ -274,7 +289,7 @@
                 <thead>
                     <tr style="background-color: #8ea9db; color: #000;">
                         <th>Sl.No</th>
-                        <th>Date & Time</th>
+                        <th>Date</th>
                         <th>Shift (1,2,3)</th>
                         <th>Total Operating Time in min</th>
                         <th>Machine Name</th>
@@ -296,6 +311,36 @@
                 </thead>
                 <tbody id="breakdownLogTableBody"></tbody>
             </table>
+        </div>
+    </div>
+
+    <!-- TAB 1.5: Copy Feature Tab -->
+    <div id="copyTab" class="tab-content">
+        <h3 style="color: var(--primary-blue); margin-top: 0;">Copy Breakdown Summary</h3>
+        <div class="filter-bar">
+            <label><b>Select Date:</b></label>
+            <input type="date" id="copyFilterDate" onchange="generateCopyContent()">
+            
+            <label style="margin-left: 15px;"><b>Select Shift:</b></label>
+            <select id="copyFilterShift" onchange="generateCopyContent()">
+                <option value="1">Shift 1</option>
+                <option value="2">Shift 2</option>
+                <option value="3">Shift 3</option>
+            </select>
+        </div>
+
+        <div style="margin-top: 15px;">
+            <label><b>Shift Description / General Notes:</b></label>
+            <textarea id="copyDescription" rows="3" style="width: 100%; margin-top: 5px;" placeholder="Type shift description or additional details here..." oninput="generateCopyContent()"></textarea>
+        </div>
+
+        <div style="margin-top: 15px;">
+            <label><b>Formatted Preview Output:</b></label>
+            <textarea id="copyPreviewArea" class="copy-preview-box" readonly></textarea>
+        </div>
+
+        <div style="margin-top: 15px; text-align: right;">
+            <button class="btn-primary" style="padding: 8px 16px; font-size: 13px;" onclick="copyToClipboard()">📋 Copy Output to Clipboard</button>
         </div>
     </div>
 
@@ -533,7 +578,10 @@
             </div>
             <div class="form-group">
                 <label>Shift Engineer Name</label>
-                <input type="text" id="inputShiftEngineer">
+                <div style="display: flex; gap: 5px;">
+                    <select id="inputShiftEngineer" style="flex: 1;"></select>
+                    <button type="button" class="btn-primary" onclick="addShiftEngineer()" title="Add New Shift Engineer" style="padding: 4px 10px; font-weight: bold; font-size: 14px;">+</button>
+                </div>
             </div>
             <div class="form-group">
                 <label>Spares Consumed Details</label>
@@ -541,7 +589,10 @@
             </div>
             <div class="form-group">
                 <label>PCA Responsibility Engineer Name</label>
-                <input type="text" id="inputRespEngineer">
+                <div style="display: flex; gap: 5px;">
+                    <select id="inputRespEngineer" style="flex: 1;"></select>
+                    <button type="button" class="btn-primary" onclick="addRespEngineer()" title="Add New PCA Responsibility Engineer" style="padding: 4px 10px; font-weight: bold; font-size: 14px;">+</button>
+                </div>
             </div>
             <div class="form-group">
                 <label>PCA Status</label>
@@ -738,6 +789,91 @@
         }
     ];
 
+    let shiftEngineers = JSON.parse(localStorage.getItem('sys_shift_engineers')) || ['John Doe', 'Mike R', 'Alex M'];
+    let respEngineers = JSON.parse(localStorage.getItem('sys_resp_engineers')) || ['Alex M', 'John Doe', 'Mike R'];
+
+    window.onload = function() {
+        populateYearDropdown();
+        populateMachineDropdowns();
+        populateEngineerDropdowns();
+        
+        // Initialize Copy Feature date filter to today
+        const today = new Date().toISOString().split('T')[0];
+        const copyDateElem = document.getElementById('copyFilterDate');
+        if (copyDateElem) copyDateElem.value = today;
+
+        onPeriodChange();
+    };
+
+    function populateEngineerDropdowns() {
+        const shiftSelect = document.getElementById('inputShiftEngineer');
+        const respSelect = document.getElementById('inputRespEngineer');
+
+        if (shiftSelect) {
+            const currentVal = shiftSelect.value;
+            shiftSelect.innerHTML = '<option value="">-- Select Shift Engineer --</option>';
+            shiftEngineers.forEach(eng => {
+                shiftSelect.innerHTML += `<option value="${eng}">${eng}</option>`;
+            });
+            if (currentVal) shiftSelect.value = currentVal;
+        }
+
+        if (respSelect) {
+            const currentVal = respSelect.value;
+            respSelect.innerHTML = '<option value="">-- Select PCA Engineer --</option>';
+            respEngineers.forEach(eng => {
+                respSelect.innerHTML += `<option value="${eng}">${eng}</option>`;
+            });
+            if (currentVal) respSelect.value = currentVal;
+        }
+    }
+
+    function syncEngineersFromLogs() {
+        breakdownLogs.forEach(l => {
+            if (l.shiftEng && !shiftEngineers.includes(l.shiftEng)) {
+                shiftEngineers.push(l.shiftEng);
+            }
+            if (l.respEng && !respEngineers.includes(l.respEng)) {
+                respEngineers.push(l.respEng);
+            }
+        });
+        localStorage.setItem('sys_shift_engineers', JSON.stringify(shiftEngineers));
+        localStorage.setItem('sys_resp_engineers', JSON.stringify(respEngineers));
+        populateEngineerDropdowns();
+    }
+
+    function addShiftEngineer() {
+        const name = prompt("Enter New Shift Engineer Name:");
+        if (name && name.trim()) {
+            const cleanName = name.trim();
+            if (!shiftEngineers.includes(cleanName)) {
+                shiftEngineers.push(cleanName);
+                localStorage.setItem('sys_shift_engineers', JSON.stringify(shiftEngineers));
+                populateEngineerDropdowns();
+                document.getElementById('inputShiftEngineer').value = cleanName;
+            } else {
+                alert("Engineer name already exists in dropdown list.");
+                document.getElementById('inputShiftEngineer').value = cleanName;
+            }
+        }
+    }
+
+    function addRespEngineer() {
+        const name = prompt("Enter New PCA Responsibility Engineer Name:");
+        if (name && name.trim()) {
+            const cleanName = name.trim();
+            if (!respEngineers.includes(cleanName)) {
+                respEngineers.push(cleanName);
+                localStorage.setItem('sys_resp_engineers', JSON.stringify(respEngineers));
+                populateEngineerDropdowns();
+                document.getElementById('inputRespEngineer').value = cleanName;
+            } else {
+                alert("Engineer name already exists in dropdown list.");
+                document.getElementById('inputRespEngineer').value = cleanName;
+            }
+        }
+    }
+
     function populateYearDropdown() {
         const yearSelect = document.getElementById('selectYear');
         yearSelect.innerHTML = '';
@@ -824,6 +960,7 @@
             try {
                 breakdownLogs = JSON.parse(e.target.result);
                 persistLogs();
+                syncEngineersFromLogs();
                 onPeriodChange();
                 alert('Data successfully loaded!');
             } catch (err) {
@@ -845,10 +982,13 @@
             renderMachineComparison();
         } else if (tabId === 'quadrantTab') {
             renderQuadrantProfiling();
+        } else if (tabId === 'copyTab') {
+            generateCopyContent();
         }
     }
 
     function openAddModal() {
+        populateEngineerDropdowns();
         document.getElementById('entryModal').style.display = 'flex';
         document.getElementById('inputDate').valueAsDate = new Date();
     }
@@ -863,6 +1003,85 @@
 
     function closeEmailModal() {
         document.getElementById('emailModal').style.display = 'none';
+    }
+
+    /* COPY FEATURE LOGIC - Grouped by Machine Name with Total Machine Downtime */
+    function generateCopyContent() {
+        const dateVal = document.getElementById('copyFilterDate').value;
+        const shiftVal = document.getElementById('copyFilterShift').value;
+        const descVal = document.getElementById('copyDescription').value;
+
+        if (!dateVal) {
+            document.getElementById('copyPreviewArea').value = "Please select a date.";
+            return;
+        }
+
+        // Format Date to DD.MM.YYYY
+        const dParts = dateVal.split('-');
+        const formattedDate = (dParts.length === 3) ? `${dParts[2]}.${dParts[1]}.${dParts[0]}` : dateVal;
+
+        let formattedOutput = `${formattedDate}\nShift ${shiftVal}\n\n`;
+
+        // Filter breakdown entries for the selected Date and Shift
+        const filteredLogs = breakdownLogs.filter(l => l.date === dateVal && String(l.shift) === String(shiftVal));
+
+        if (filteredLogs.length === 0) {
+            formattedOutput += `No breakdown entries recorded.`;
+        } else {
+            // Group breakdown entries by Machine Name
+            const machineGroups = {};
+            filteredLogs.forEach(entry => {
+                const mc = entry.mcName || "UNKNOWN MACHINE";
+                if (!machineGroups[mc]) {
+                    machineGroups[mc] = {
+                        issues: [],
+                        totalDowntime: 0
+                    };
+                }
+                const loss = Number(entry.lossTime) || 0;
+                machineGroups[mc].totalDowntime += loss;
+                machineGroups[mc].issues.push({
+                    desc: entry.issue || 'No issue description',
+                    lossTime: loss
+                });
+            });
+
+            // Format grouped data
+            Object.keys(machineGroups).forEach((mcName, index) => {
+                const group = machineGroups[mcName];
+                formattedOutput += `${mcName}\n`;
+                
+                group.issues.forEach(item => {
+                    formattedOutput += `${item.desc}\n`;
+                });
+                
+                formattedOutput += `(${group.totalDowntime} mins)\n`;
+
+                if (index < Object.keys(machineGroups).length - 1) {
+                    formattedOutput += `\n`;
+                }
+            });
+        }
+
+        if (descVal && descVal.trim() !== '') {
+            formattedOutput += `\n\nNotes / Description:\n${descVal.trim()}`;
+        }
+
+        document.getElementById('copyPreviewArea').value = formattedOutput;
+    }
+
+    function copyToClipboard() {
+        const copyText = document.getElementById('copyPreviewArea');
+        if (!copyText.value) return;
+
+        copyText.select();
+        copyText.setSelectionRange(0, 99999);
+
+        navigator.clipboard.writeText(copyText.value).then(() => {
+            alert("Breakdown summary copied to clipboard!");
+        }).catch(err => {
+            alert("Failed to copy text: " + err);
+        });
     }
 
     function generateEmailBodyContent() {
@@ -916,7 +1135,7 @@
             breakdownLogs.forEach(l => {
                 const d = new Date(l.date);
                 if (d.getFullYear() === year && d.getMonth() === month && logCount < 10) {
-                    body += `• ${l.date} ${l.time || ''} | ${l.mcName} | Shift ${l.shift} | Loss: ${l.lossTime}m | Issue: ${l.issue || 'N/A'} | Status: ${l.pcaStatus}\n`;
+                    body += `• ${l.date} | ${l.mcName} | Shift ${l.shift} | Loss: ${l.lossTime}m | Issue: ${l.issue || 'N/A'} | Status: ${l.pcaStatus}\n`;
                     logCount++;
                 }
             });
@@ -945,7 +1164,6 @@
             return;
         }
 
-        // Auto-export all checked items to local downloads folder so they are available to attach
         if (document.getElementById('sendOptAvailability').checked) {
             await exportAvailabilityExcel();
         }
@@ -1016,6 +1234,7 @@
         renderBreakdownTrend();
         renderMachineComparison();
         renderQuadrantProfiling();
+        generateCopyContent();
     }
 
     function clearFilters() {
@@ -1063,6 +1282,7 @@
         breakdownLogs.sort((a, b) => new Date(`${a.date}T${a.time||'00:00'}`) - new Date(`${b.date}T${b.time||'00:00'}`));
 
         persistLogs();
+        syncEngineersFromLogs();
         closeAddModal();
         onPeriodChange();
     }
@@ -1101,12 +1321,11 @@
             if (!textMatch) return;
 
             const formattedDate = `${String(d.getDate()).padStart(2, '0')}/${d.toLocaleString('en-US', {month:'short'})}/${String(d.getFullYear()).slice(-2)}`;
-            const timeDisplay = log.time ? ` ${log.time}` : '';
 
             tbody.innerHTML += `
                 <tr>
                     <td>${displayIndex++}</td>
-                    <td>${formattedDate}${timeDisplay}</td>
+                    <td>${formattedDate}</td>
                     <td>${log.shift}</td>
                     <td>${log.opTime}</td>
                     <td><b>${log.mcName}</b></td>
@@ -2067,7 +2286,7 @@
         const sheet = workbook.addWorksheet(`BD_Log_${monthName}_${year}`);
 
         const headers = [
-            'Sl.No', 'Date & Time', 'Shift (1,2,3)', 'Total Operating Time in min',
+            'Sl.No', 'Date', 'Shift (1,2,3)', 'Total Operating Time in min',
             'Machine Name', 'Machine Number', 'Nature of Issue (Customer Voice) Alarm Display',
             'Type of issue (M/E)', 'Breakdown Loss time in mins', 'Status (STOP/RUN)',
             'Immediate Corrective Action', 'Permanent Corrective Action *',
@@ -2091,7 +2310,7 @@
         breakdownLogs.forEach(l => {
             const d = new Date(l.date);
             if (d.getFullYear() === year && d.getMonth() === month) {
-                const formattedDate = `${String(d.getDate()).padStart(2, '0')}/${d.toLocaleString('en-US', {month:'short'})}/${String(d.getFullYear()).slice(-2)}${l.time ? ' '+l.time : ''}`;
+                const formattedDate = `${String(d.getDate()).padStart(2, '0')}/${d.toLocaleString('en-US', {month:'short'})}/${String(d.getFullYear()).slice(-2)}`;
                 const row = sheet.addRow([
                     slNo++, formattedDate, Number(l.shift), Number(l.opTime),
                     l.mcName, l.mcNo || '', l.issue, l.typeIssue, Number(l.lossTime),
@@ -2211,54 +2430,64 @@
             const mcPlannedMin = mcPlannedHrs * 60;
 
             const mcAvail = mcPlannedMin > 0 ? (((mcPlannedMin - mcBdMin) / mcPlannedMin) * 100) : 100;
-            const mttr = mcBdOcc > 0 ? (mcBdHrs / mcBdOcc).toFixed(2) : '0.00';
-            const mtbf = mcBdOcc > 0 ? ((mcPlannedHrs - mcBdHrs) / mcBdOcc).toFixed(2) : mcPlannedHrs.toFixed(2);
 
-            const rowsToInsert = [
+            const subRows = [
                 { label: 'BD Min', vals: dailyBdMin },
                 { label: 'BD Occ', vals: dailyBdOcc },
                 { label: '# of shift', vals: dailyPlanned },
                 { label: '%', vals: [] }
             ];
 
-            const mcDetailText = mc.mcNo ? `${mc.mcNo} - ${mc.name}` : mc.name;
+            const mcDetailDisplay = mc.mcNo ? `${mc.mcNo} - ${mc.name}` : mc.name;
 
-            rowsToInsert.forEach((r, rowOffset) => {
-                const rowData = [
-                    rowOffset === 0 ? index + 1 : '',
-                    rowOffset === 0 ? mcDetailText : '',
-                    r.label
+            subRows.forEach((sr, rIdx) => {
+                const rowVals = [
+                    rIdx === 0 ? index + 1 : '',
+                    rIdx === 0 ? mcDetailDisplay : '',
+                    sr.label
                 ];
 
                 for (let i = 0; i < daysInMonth; i++) {
-                    if (r.label === '%') {
+                    if (sr.label === '%') {
                         const p = dailyPlanned[i];
                         const b = dailyBdMin[i];
-                        rowData.push(p > 0 ? Number((((p - b) / p) * 100).toFixed(0)) : 100);
-                    } else if (r.label === 'BD Min' || r.label === 'BD Occ') {
-                        rowData.push(r.vals[i] > 0 ? r.vals[i] : '');
+                        const pct = p > 0 ? (((p - b) / p) * 100).toFixed(0) : 100;
+                        rowVals.push(Number(pct) / 100);
+                    } else if (sr.label === 'BD Min' || sr.label === 'BD Occ') {
+                        rowVals.push(sr.vals[i] > 0 ? sr.vals[i] : '');
                     } else {
-                        rowData.push(r.vals[i] || 0);
+                        rowVals.push(sr.vals[i] || 0);
                     }
                 }
 
-                if (rowOffset === 0) {
-                    rowData.push(mcBdMin, Number(mcBdHrs.toFixed(2)), mcBdOcc, Number(mcPlannedHrs.toFixed(2)), Number((mcAvail/100).toFixed(4)), Number(mttr), Number(mtbf), remarks.join('; '));
+                if (rIdx === 0) {
+                    rowVals.push(
+                        mcBdMin,
+                        Number(mcBdHrs.toFixed(2)),
+                        mcBdOcc,
+                        Number(mcPlannedHrs.toFixed(2)),
+                        Number((mcAvail / 100).toFixed(4)),
+                        mcBdOcc > 0 ? Number((mcBdHrs / mcBdOcc).toFixed(2)) : 0,
+                        mcBdOcc > 0 ? Number(((mcPlannedHrs - mcBdHrs) / mcBdOcc).toFixed(2)) : mcPlannedHrs,
+                        remarks.join('; ')
+                    );
                 } else {
-                    rowData.push('', '', '', '', '', '', '', '');
+                    rowVals.push('', '', '', '', '', '', '', '');
                 }
 
-                const addedRow = sheet.addRow(rowData);
+                const addedRow = sheet.addRow(rowVals);
                 addedRow.font = { size: 9 };
                 addedRow.alignment = { vertical: 'middle', horizontal: 'center' };
 
-                for (let c = 1; c <= totalCols; c++) {
-                    const cell = addedRow.getCell(c);
+                for (let col = 1; col <= totalCols; col++) {
+                    const cell = addedRow.getCell(col);
                     cell.border = { top: {style:'thin'}, left: {style:'thin'}, bottom: {style:'thin'}, right: {style:'thin'} };
 
-                    if (r.label === 'BD Min' && c >= 4 && c < 4 + daysInMonth && r.vals[c - 4] > 0) {
+                    if (sr.label === '%' && col >= 4 && col < 4 + daysInMonth) {
+                        cell.numFmt = '0%';
+                    } else if (sr.label === 'BD Min' && col >= 4 && col < 4 + daysInMonth && cell.value > 0) {
                         cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFC7CE' } };
-                    } else if (r.label === 'BD Occ' && c >= 4 && c < 4 + daysInMonth && r.vals[c - 4] > 0) {
+                    } else if (sr.label === 'BD Occ' && col >= 4 && col < 4 + daysInMonth && cell.value > 0) {
                         cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'E2EFDA' } };
                     }
                 }
@@ -2267,60 +2496,20 @@
             sheet.mergeCells(startMcRow, 1, startMcRow + 3, 1);
             sheet.mergeCells(startMcRow, 2, startMcRow + 3, 2);
 
-            for (let c = 0; c < 8; c++) {
-                const colIdx = 4 + daysInMonth + c;
-                sheet.mergeCells(startMcRow, colIdx, startMcRow + 3, colIdx);
-            }
-
-            const availCell = sheet.getCell(startMcRow, 3 + daysInMonth + 5);
-            availCell.numFmt = '0.00%';
-            if (mcAvail >= 90) {
-                availCell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: '92D050' } };
-                availCell.font = { bold: true };
-            } else {
-                availCell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFC7CE' } };
-                availCell.font = { bold: true };
+            for (let c = 4 + daysInMonth; c <= totalCols; c++) {
+                sheet.mergeCells(startMcRow, c, startMcRow + 3, c);
+                const cell = sheet.getCell(startMcRow, c);
+                if (c === 4 + daysInMonth + 4) { 
+                    cell.numFmt = '0.00%';
+                    if (mcAvail >= 90) {
+                        cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: '92D050' } };
+                    } else {
+                        cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFC7CE' } };
+                    }
+                }
             }
 
             currentRow += 4;
-        });
-
-        sheet.addRow([]);
-        sheet.addRow([]);
-
-        const kpi = getKpiMetrics();
-
-        const kpiRows = [
-            { title: 'Total BD Hrs', val: Number(kpi.overallBdHrs), color: '00B0F0' },
-            { title: 'Total BD Occurance', val: Number(kpi.totalBdOcc), color: '92D050' },
-            { title: 'OVERALL MTTR', val: Number(kpi.overallMttr), color: '00B0F0' },
-            { title: 'OVERALL MTBF', val: Number(kpi.overallMtbf), color: '92D050' },
-            { title: 'CRITICAL MCs MTTR', val: Number(kpi.critMttr), color: '00B0F0' },
-            { title: 'CRITICAL MCs MTBF', val: Number(kpi.critMtbf), color: '92D050' },
-            { title: 'Overall Availability %', val: Number((kpi.overallAvail / 100).toFixed(4)), color: '00B0F0', isPct: true },
-            { title: 'CRITICAL MCs Availability %', val: Number((kpi.critAvail / 100).toFixed(4)), color: 'F8CBAD', isPct: true },
-            { title: '> 98% availability', val: Number(kpi.countGt98), color: '92D050' },
-            { title: '90 - 98 % Availability', val: Number(kpi.count90to98), color: '92D050' },
-            { title: '< 90 % Availability', val: Number(kpi.countLt90), color: '92D050' }
-        ];
-
-        kpiRows.forEach(item => {
-            const r = sheet.addRow([item.title, item.val]);
-            r.font = { bold: true, size: 10 };
-            
-            const cell1 = r.getCell(1);
-            cell1.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: item.color } };
-            cell1.alignment = { vertical: 'middle', horizontal: 'center' };
-            cell1.border = { top: {style:'thin'}, left: {style:'thin'}, bottom: {style:'thin'}, right: {style:'thin'} };
-
-            const cell2 = r.getCell(2);
-            cell2.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFFF00' } };
-            cell2.alignment = { vertical: 'middle', horizontal: 'center' };
-            cell2.border = { top: {style:'thin'}, left: {style:'thin'}, bottom: {style:'thin'}, right: {style:'thin'} };
-
-            if (item.isPct) {
-                cell2.numFmt = '0.00%';
-            }
         });
 
         const buffer = await workbook.xlsx.writeBuffer();
@@ -2335,9 +2524,8 @@
         const workbook = new ExcelJS.Workbook();
         const sheet = workbook.addWorksheet(`Trend_${monthName}_${year}`);
 
-        sheet.addRow(["DELPHI-TVS TECHNOLOGIES"]).font = { bold: true, size: 14 };
-        sheet.addRow(["BREAKDOWN TREND REPORT"]).font = { bold: true, size: 12 };
-        sheet.addRow([`Month & Year: ${monthName}-${year}`]).font = { italic: true, size: 10 };
+        sheet.addRow(["DELPHI - TVS TECHNOLOGIES - BREAKDOWN TREND REPORT"]).font = { bold: true, size: 14 };
+        sheet.addRow([`Month & Year: ${monthName}-${String(year).slice(-2)} | Plant: CR - Oragadam | APU: INJECTOR`]).font = { italic: true, size: 10 };
         sheet.addRow([]);
 
         const canvas = document.getElementById('trendCanvas');
@@ -2348,18 +2536,21 @@
                 extension: 'png',
             });
             sheet.addImage(chartImageId, {
-                tl: { col: 0, row: 4 },
-                ext: { width: 850, height: 260 }
+                tl: { col: 0, row: 3 },
+                ext: { width: 900, height: 260 }
             });
             for (let i = 0; i < 15; i++) sheet.addRow([]);
         }
 
+        const dateRow = ['DATE'];
+        for (let i = 1; i <= 31; i++) dateRow.push(i);
+        const dRow = sheet.addRow(dateRow);
+        dRow.font = { bold: true, size: 9 };
+        dRow.alignment = { horizontal: 'center' };
+
         const dailyTotals = Array(31).fill(0);
         const machineDailyCounts = {};
-
-        machineMaster.forEach(mc => {
-            machineDailyCounts[mc.name] = Array(31).fill(0);
-        });
+        machineMaster.forEach(mc => { machineDailyCounts[mc.name] = Array(31).fill(0); });
 
         breakdownLogs.forEach(l => {
             const d = new Date(l.date);
@@ -2374,40 +2565,37 @@
             }
         });
 
-        const headerRow = ['DATE', ...Array.from({ length: 31 }, (_, i) => i + 1)];
-        const r1 = sheet.addRow(headerRow);
-        r1.font = { bold: true, size: 9 };
-        r1.alignment = { horizontal: 'center' };
-
-        const totalRow = ['Total No. of Breakdown', ...dailyTotals];
-        const r2 = sheet.addRow(totalRow);
-        r2.font = { bold: true, size: 9 };
-        r2.alignment = { horizontal: 'center' };
+        const totRow = ['Total No. of Breakdown', ...dailyTotals.map(v => v || '')];
+        const tRow = sheet.addRow(totRow);
+        tRow.font = { bold: true, size: 9, color: { argb: '9C0006' } };
+        tRow.alignment = { horizontal: 'center' };
+        for (let c = 1; c <= 32; c++) {
+            tRow.getCell(c).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFC7CE' } };
+        }
 
         sheet.addRow([]);
-        const mcHeader = ['Equipment / Machine Name', ...Array.from({ length: 31 }, (_, i) => i + 1)];
-        const r3 = sheet.addRow(mcHeader);
-        r3.font = { bold: true, size: 9 };
-        r3.alignment = { horizontal: 'center' };
+        sheet.addRow(['Equipment / Machine Name Breakdown Occurrences']).font = { bold: true, size: 11 };
+
+        const mcHeader = ['Equipment / Machine Name'];
+        for (let i = 1; i <= 31; i++) mcHeader.push(i);
+        const mcHRow = sheet.addRow(mcHeader);
+        mcHRow.font = { bold: true, size: 9 };
+        mcHRow.alignment = { horizontal: 'center' };
 
         machineMaster.forEach(mc => {
-            const row = sheet.addRow([mc.name, ...machineDailyCounts[mc.name].map(v => v || '')]);
-            row.font = { size: 9 };
-            row.alignment = { horizontal: 'center' };
-            row.getCell(1).alignment = { horizontal: 'left' };
+            const rowVals = [mc.name, ...machineDailyCounts[mc.name].map(v => v || '')];
+            const r = sheet.addRow(rowVals);
+            r.font = { size: 9 };
+            r.alignment = { horizontal: 'center' };
+            r.getCell(1).alignment = { horizontal: 'left' };
         });
 
         sheet.getColumn(1).width = 30;
+        for (let c = 2; c <= 32; c++) sheet.getColumn(c).width = 4;
 
         const buffer = await workbook.xlsx.writeBuffer();
         saveAs(new Blob([buffer]), `Breakdown_Trend_${monthName}_${year}.xlsx`);
     }
-
-    window.onload = function() {
-        populateYearDropdown();
-        populateMachineDropdowns();
-        onPeriodChange();
-    };
 </script>
 </body>
 </html>
