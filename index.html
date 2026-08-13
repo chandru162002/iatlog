@@ -794,7 +794,7 @@
             </div>
         </div>
 
-        <div style="margin-top:20px; text-align:right; display:flex; gap:10px; justify-flex-end;">
+        <div style="margin-top:20px; text-align:right; display:flex; gap:10px; justify-content:flex-end;">
             <button style="background:#6c757d; color:#fff;" onclick="closeAddModal()">Cancel</button>
             <button class="btn-primary" onclick="saveBreakdownEntry()">Save Entry</button>
         </div>
@@ -913,6 +913,30 @@
         </h3>
 
         <div class="email-form-section">
+            <div class="form-grid" style="grid-template-columns: 1fr 1fr; margin-bottom: 12px;">
+                <div class="form-group">
+                    <label>Report Month *</label>
+                    <select id="modalReportMonth">
+                        <option value="0">January</option>
+                        <option value="1">February</option>
+                        <option value="2">March</option>
+                        <option value="3">April</option>
+                        <option value="4">May</option>
+                        <option value="5">June</option>
+                        <option value="6">July</option>
+                        <option value="7">August</option>
+                        <option value="8">September</option>
+                        <option value="9">October</option>
+                        <option value="10">November</option>
+                        <option value="11">December</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>Report Year *</label>
+                    <select id="modalReportYear"></select>
+                </div>
+            </div>
+
             <div class="form-grid" style="grid-template-columns: 1fr;">
                 <div class="form-group">
                     <label>From Address (Sender)</label>
@@ -1067,7 +1091,24 @@
     let breakdownLogs = [];
     let shiftEngineers = [];
     let respEngineers = [];
+    let deletedShiftEngineers = [];
+    let deletedRespEngineers = [];
     let currentEntrySpares = [];
+
+    // Helper: parse date reliably without timezone shifts
+    function parseLogDate(dateStr) {
+        if (!dateStr) return { year: 0, month: -1, day: 0 };
+        const parts = String(dateStr).split('-');
+        if (parts.length === 3) {
+            return {
+                year: parseInt(parts[0], 10),
+                month: parseInt(parts[1], 10) - 1, // 0-indexed month
+                day: parseInt(parts[2], 10)
+            };
+        }
+        const d = new Date(dateStr);
+        return { year: d.getFullYear(), month: d.getMonth(), day: d.getDate() };
+    }
 
     window.onload = function() {
         populateYearDropdown();
@@ -1075,6 +1116,7 @@
         populateSparesYearDropdown();
         populateExportBackupYearDropdown();
         
+        loadDeletedEngineers();
         loadEngineerLists();
         loadMachineList();
 
@@ -1109,7 +1151,7 @@
         shiftEngRef.on('value', (snapshot) => {
             const data = snapshot.val();
             if (data) {
-                shiftEngineers = Object.values(data);
+                shiftEngineers = Object.values(data).filter(e => !deletedShiftEngineers.includes(e));
                 persistEngineerLists();
             }
             populateEngineerDropdowns();
@@ -1118,7 +1160,7 @@
         respEngRef.on('value', (snapshot) => {
             const data = snapshot.val();
             if (data) {
-                respEngineers = Object.values(data);
+                respEngineers = Object.values(data).filter(e => !deletedRespEngineers.includes(e));
                 persistEngineerLists();
             }
             populateEngineerDropdowns();
@@ -1137,13 +1179,30 @@
         onPeriodChange();
     };
 
+    function loadDeletedEngineers() {
+        try {
+            const savedDelShift = localStorage.getItem('deletedShiftEngineersList');
+            if (savedDelShift) deletedShiftEngineers = JSON.parse(savedDelShift);
+
+            const savedDelResp = localStorage.getItem('deletedRespEngineersList');
+            if (savedDelResp) deletedRespEngineers = JSON.parse(savedDelResp);
+        } catch(e){}
+    }
+
+    function persistDeletedEngineers() {
+        try {
+            localStorage.setItem('deletedShiftEngineersList', JSON.stringify(deletedShiftEngineers));
+            localStorage.setItem('deletedRespEngineersList', JSON.stringify(deletedRespEngineers));
+        } catch(e){}
+    }
+
     function loadEngineerLists() {
         try {
             const savedShift = localStorage.getItem('shiftEngineersList');
-            if (savedShift) shiftEngineers = JSON.parse(savedShift);
+            if (savedShift) shiftEngineers = JSON.parse(savedShift).filter(e => !deletedShiftEngineers.includes(e));
 
             const savedResp = localStorage.getItem('respEngineersList');
-            if (savedResp) respEngineers = JSON.parse(savedResp);
+            if (savedResp) respEngineers = JSON.parse(savedResp).filter(e => !deletedRespEngineers.includes(e));
         } catch(e){}
         populateEngineerDropdowns();
     }
@@ -1297,8 +1356,8 @@
             filename = `breakdown_backup_${monthNames[month]}_${year}.json`;
 
             dataToExport = breakdownLogs.filter(log => {
-                const d = new Date(log.date);
-                return d.getFullYear() === year && d.getMonth() === month;
+                const p = parseLogDate(log.date);
+                return p.year === year && p.month === month;
             });
         } else {
             dataToExport = breakdownLogs;
@@ -1470,29 +1529,33 @@
             const currentVal = shiftSelect.value;
             shiftSelect.innerHTML = '<option value="">-- Select Shift Engineer --</option>';
             shiftEngineers.forEach(eng => {
-                shiftSelect.innerHTML += `<option value="${eng}">${eng}</option>`;
+                if (!deletedShiftEngineers.includes(eng)) {
+                    shiftSelect.innerHTML += `<option value="${eng}">${eng}</option>`;
+                }
             });
-            if (currentVal) shiftSelect.value = currentVal;
+            if (currentVal && !deletedShiftEngineers.includes(currentVal)) shiftSelect.value = currentVal;
         }
 
         if (respSelect) {
             const currentVal = respSelect.value;
             respSelect.innerHTML = '<option value="">-- Select PCA Engineer --</option>';
             respEngineers.forEach(eng => {
-                respSelect.innerHTML += `<option value="${eng}">${eng}</option>`;
+                if (!deletedRespEngineers.includes(eng)) {
+                    respSelect.innerHTML += `<option value="${eng}">${eng}</option>`;
+                }
             });
-            if (currentVal) respSelect.value = currentVal;
+            if (currentVal && !deletedRespEngineers.includes(currentVal)) respSelect.value = currentVal;
         }
     }
 
     function syncEngineersFromLogs() {
         let changed = false;
         breakdownLogs.forEach(l => {
-            if (l.shiftEng && !shiftEngineers.includes(l.shiftEng)) {
+            if (l.shiftEng && !shiftEngineers.includes(l.shiftEng) && !deletedShiftEngineers.includes(l.shiftEng)) {
                 shiftEngineers.push(l.shiftEng);
                 changed = true;
             }
-            if (l.respEng && !respEngineers.includes(l.respEng)) {
+            if (l.respEng && !respEngineers.includes(l.respEng) && !deletedRespEngineers.includes(l.respEng)) {
                 respEngineers.push(l.respEng);
                 changed = true;
             }
@@ -1507,13 +1570,15 @@
         const name = prompt("Enter New Shift Engineer Name:");
         if (name && name.trim()) {
             const cleanName = name.trim();
+            deletedShiftEngineers = deletedShiftEngineers.filter(e => e !== cleanName);
+            persistDeletedEngineers();
             if (!shiftEngineers.includes(cleanName)) {
                 shiftEngineers.push(cleanName);
                 persistEngineerLists();
                 populateEngineerDropdowns();
                 document.getElementById('inputShiftEngineer').value = cleanName;
             } else {
-                alert("Engineer name already exists in dropdown list.");
+                populateEngineerDropdowns();
                 document.getElementById('inputShiftEngineer').value = cleanName;
             }
         }
@@ -1528,6 +1593,10 @@
         }
         if (confirm(`Are you sure you want to delete "${selectedName}" from the Shift Engineer list?`)) {
             shiftEngineers = shiftEngineers.filter(eng => eng !== selectedName);
+            if (!deletedShiftEngineers.includes(selectedName)) {
+                deletedShiftEngineers.push(selectedName);
+                persistDeletedEngineers();
+            }
             persistEngineerLists();
             populateEngineerDropdowns();
         }
@@ -1537,13 +1606,15 @@
         const name = prompt("Enter New PCA Responsibility Engineer Name:");
         if (name && name.trim()) {
             const cleanName = name.trim();
+            deletedRespEngineers = deletedRespEngineers.filter(e => e !== cleanName);
+            persistDeletedEngineers();
             if (!respEngineers.includes(cleanName)) {
                 respEngineers.push(cleanName);
                 persistEngineerLists();
                 populateEngineerDropdowns();
                 document.getElementById('inputRespEngineer').value = cleanName;
             } else {
-                alert("Engineer name already exists in dropdown list.");
+                populateEngineerDropdowns();
                 document.getElementById('inputRespEngineer').value = cleanName;
             }
         }
@@ -1558,6 +1629,10 @@
         }
         if (confirm(`Are you sure you want to delete "${selectedName}" from the PCA Responsibility Engineer list?`)) {
             respEngineers = respEngineers.filter(eng => eng !== selectedName);
+            if (!deletedRespEngineers.includes(selectedName)) {
+                deletedRespEngineers.push(selectedName);
+                persistDeletedEngineers();
+            }
             persistEngineerLists();
             populateEngineerDropdowns();
         }
@@ -1663,6 +1738,14 @@
     }
 
     function onPeriodChange() {
+        const monthVal = document.getElementById('selectMonth').value;
+        const yearVal = document.getElementById('selectYear').value;
+
+        const sparesMonthSel = document.getElementById('sparesMonthSelect');
+        const sparesYearSel = document.getElementById('sparesYearSelect');
+        if (sparesMonthSel) sparesMonthSel.value = monthVal;
+        if (sparesYearSel) sparesYearSel.value = yearVal;
+
         updateFilterDatesFromMonthYear();
         renderBreakdownLogTable();
         renderAvailabilityMatrix();
@@ -1701,8 +1784,8 @@
 
         let count = 0;
         breakdownLogs.forEach(log => {
-            const d = new Date(log.date);
-            if (d.getFullYear() === year && d.getMonth() === month) {
+            const p = parseLogDate(log.date);
+            if (p.year === year && p.month === month) {
                 if (machineFilter && log.mcName !== machineFilter) return;
                 if (shiftFilter && String(log.shift) !== String(shiftFilter)) return;
 
@@ -1712,7 +1795,8 @@
                 }
 
                 count++;
-                const formattedDate = `${String(d.getDate()).padStart(2, '0')}/${d.toLocaleString('en-US', {month:'short'})}/${String(d.getFullYear()).slice(-2)}`;
+                const monthNames = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+                const formattedDate = `${String(p.day).padStart(2, '0')}/${monthNames[p.month]}/${String(p.year).slice(-2)}`;
                 const opTime = Number(log.opTime) || 480;
                 const lossTime = Number(log.lossTime) || 0;
                 const avail = opTime > 0 ? (((opTime - lossTime) / opTime) * 100).toFixed(2) : "100.00";
@@ -1889,6 +1973,63 @@
         document.getElementById('emailModal').style.display = 'none';
     }
 
+    function sendEmailViaWebGmail() {
+        const monthVal = parseInt(document.getElementById('modalReportMonth').value);
+        const yearVal = parseInt(document.getElementById('modalReportYear').value);
+        const monthNames = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
+        const selectedMonthText = monthNames[monthVal];
+
+        const toInputs = document.querySelectorAll('.emailToInput');
+        const recipients = Array.from(toInputs).map(i => i.value.trim()).filter(Boolean);
+
+        if (recipients.length === 0) {
+            alert('Please enter at least one Recipient email address.');
+            return;
+        }
+
+        const ccInputs = document.querySelectorAll('.emailCcInput');
+        const ccs = Array.from(ccInputs).map(i => i.value.trim()).filter(Boolean);
+
+        const subjectStr = document.getElementById('emailSubject').value || `Equipment Breakdown & Availability Status Report - ${selectedMonthText} ${yearVal}`;
+
+        const kpi = getKpiMetricsForPeriod(monthVal, yearVal);
+
+        let emailBody = `EQUIPMENT BREAKDOWN & AVAILABILITY REPORT\n`;
+        emailBody += `Plant: CR - Oragadam | APU: INJECTOR\n`;
+        emailBody += `Period: ${selectedMonthText} ${yearVal}\n\n`;
+
+        emailBody += `--- SUMMARY KPI METRICS ---\n`;
+        emailBody += `Total BD Hours: ${kpi.overallBdHrs} Hrs\n`;
+        emailBody += `Total BD Occurrences: ${kpi.totalBdOcc}\n`;
+        emailBody += `Overall Machine Availability: ${kpi.overallAvail}%\n`;
+        emailBody += `Overall MTTR: ${kpi.overallMttr} Hrs\n`;
+        emailBody += `Overall MTBF: ${kpi.overallMtbf} Hrs\n`;
+        emailBody += `Critical Machines Availability: ${kpi.critAvail}%\n`;
+        emailBody += `Critical Machines MTTR: ${kpi.critMttr} Hrs\n`;
+        emailBody += `Critical Machines MTBF: ${kpi.critMtbf} Hrs\n\n`;
+
+        emailBody += `--- BREAKDOWN LOG HIGHLIGHTS ---\n`;
+        const periodLogs = breakdownLogs.filter(log => {
+            const p = parseLogDate(log.date);
+            return p.year === yearVal && p.month === monthVal;
+        });
+
+        if (periodLogs.length === 0) {
+            emailBody += `No breakdown entries recorded for ${selectedMonthText} ${yearVal}.\n`;
+        } else {
+            periodLogs.forEach((log, idx) => {
+                emailBody += `${idx + 1}. [${log.date}] ${log.mcName} - Loss: ${log.lossTime} min | Issue: ${log.issue || 'N/A'} | Status: ${log.pcaStatus || 'N/A'}\n`;
+            });
+        }
+
+        emailBody += `\nReport generated automatically from Equipment Breakdown System.`;
+
+        const gmailUrl = `https://mail.google.com/mail/?view=cm&fs=1&to=${encodeURIComponent(recipients.join(','))}&cc=${encodeURIComponent(ccs.join(','))}&su=${encodeURIComponent(subjectStr)}&body=${encodeURIComponent(emailBody)}`;
+
+        window.open(gmailUrl, '_blank');
+        closeEmailModal();
+    }
+
     function generateCopyContent() {
         const dateVal = document.getElementById('copyFilterDate').value;
         const shiftVal = document.getElementById('copyFilterShift').value;
@@ -1965,7 +2106,10 @@
     function getKpiMetrics() {
         const year = parseInt(document.getElementById('selectYear').value);
         const month = parseInt(document.getElementById('selectMonth').value);
+        return getKpiMetricsForPeriod(month, year);
+    }
 
+    function getKpiMetricsForPeriod(month, year) {
         let totalBdMin = 0;
         let totalBdOcc = 0;
         let critBdMin = 0;
@@ -1986,8 +2130,8 @@
             let mcOcc = 0;
 
             breakdownLogs.forEach(l => {
-                const d = new Date(l.date);
-                if (l.mcName === mc.name && d.getFullYear() === year && d.getMonth() === month) {
+                const p = parseLogDate(l.date);
+                if (l.mcName === mc.name && p.year === year && p.month === month) {
                     mcBdMin += Number(l.lossTime);
                     mcOcc += 1;
                 }
@@ -2068,12 +2212,14 @@
             let remarks = [];
 
             breakdownLogs.forEach(l => {
-                const d = new Date(l.date);
-                if (l.mcName === mc.name && d.getFullYear() === year && d.getMonth() === month) {
-                    const dayIdx = d.getDate() - 1;
-                    dailyBdMin[dayIdx] += Number(l.lossTime);
-                    dailyBdOcc[dayIdx] += 1;
-                    if (l.permAction && !remarks.includes(l.permAction)) remarks.push(l.permAction);
+                const p = parseLogDate(l.date);
+                if (l.mcName === mc.name && p.year === year && p.month === month) {
+                    const dayIdx = p.day - 1;
+                    if (dayIdx >= 0 && dayIdx < daysInMonth) {
+                        dailyBdMin[dayIdx] += Number(l.lossTime);
+                        dailyBdOcc[dayIdx] += 1;
+                        if (l.permAction && !remarks.includes(l.permAction)) remarks.push(l.permAction);
+                    }
                 }
             });
 
@@ -2175,9 +2321,9 @@
         machineMaster.forEach(mc => {
             if (selectedMc && mc.name !== selectedMc) return;
             breakdownLogs.forEach(l => {
-                const d = new Date(l.date);
-                if (l.mcName === mc.name && d.getFullYear() === year && d.getMonth() === month) {
-                    const dayIdx = d.getDate() - 1;
+                const p = parseLogDate(l.date);
+                if (l.mcName === mc.name && p.year === year && p.month === month) {
+                    const dayIdx = p.day - 1;
                     if (dayIdx >= 0 && dayIdx < daysInMonth) {
                         dailyTotalMin[dayIdx] += Number(l.lossTime);
                         dailyTotalOcc[dayIdx] += 1;
@@ -2215,9 +2361,9 @@
                 const dailyOcc = Array(daysInMonth).fill(0);
 
                 breakdownLogs.forEach(l => {
-                    const d = new Date(l.date);
-                    if (l.mcName === mc.name && d.getFullYear() === year && d.getMonth() === month) {
-                        const dayIdx = d.getDate() - 1;
+                    const p = parseLogDate(l.date);
+                    if (l.mcName === mc.name && p.year === year && p.month === month) {
+                        const dayIdx = p.day - 1;
                         if (dayIdx >= 0 && dayIdx < daysInMonth) {
                             dailyMin[dayIdx] += Number(l.lossTime);
                             dailyOcc[dayIdx] += 1;
@@ -2344,9 +2490,9 @@
         const freqMap = {};
 
         breakdownLogs.forEach(log => {
-            const d = new Date(log.date);
-            if (monthOpt !== 'all' && d.getMonth() !== parseInt(monthOpt)) return;
-            if (yearOpt !== 'all' && d.getFullYear() !== parseInt(yearOpt)) return;
+            const p = parseLogDate(log.date);
+            if (monthOpt !== 'all' && p.month !== parseInt(monthOpt)) return;
+            if (yearOpt !== 'all' && p.year !== parseInt(yearOpt)) return;
 
             if (log.spares && log.spares.trim() !== '') {
                 const items = log.spares.split(',');
@@ -2437,7 +2583,7 @@
         if (table) {
             let html = '<thead><tr style="background:#8EA9DB; color:#000;"><th>Sl. No</th><th>Spare Component Description</th><th>Total Quantity Consumed</th></tr></thead><tbody>';
             if (sortedSpares.length === 0) {
-                html += '<tr><td colspan="3" style="color:#888;">No spares recorded.</td></tr>';
+                html += '<tr><td colspan="3" style="color:#888;">No spares recorded for the selected period.</td></tr>';
             } else {
                 sortedSpares.forEach((item, idx) => {
                     html += `<tr><td>${idx + 1}</td><td style="text-align:left;"><b>${item.name}</b></td><td><b>${item.count}</b></td></tr>`;
@@ -2555,7 +2701,9 @@
 
     function renderQuadrantProfiling() {
         const fromDate = document.getElementById('quadrantFromDate')?.value;
+        const fromTime = document.getElementById('quadrantFromTime')?.value || "00:00";
         const toDate = document.getElementById('quadrantToDate')?.value;
+        const toTime = document.getElementById('quadrantToTime')?.value || "23:59";
         const selectedMc = document.getElementById('quadrantFilterMachine')?.value || "";
 
         const threshOcc = parseInt(document.getElementById('thresholdOcc').value) || 2;
@@ -2563,65 +2711,72 @@
 
         const metrics = {};
         machineMaster.forEach(m => {
-            if (selectedMc && m.name !== selectedMc) return;
-            metrics[m.name] = { min: 0, occ: 0 };
+            metrics[m.name] = { dt: 0, occ: 0 };
         });
 
-        breakdownLogs.forEach(log => {
-            if (!metrics[log.mcName]) return;
-            if (fromDate && log.date < fromDate) return;
-            if (toDate && log.date > toDate) return;
+        const startDateTime = fromDate ? `${fromDate}T${fromTime}` : null;
+        const endDateTime = toDate ? `${toDate}T${toTime}` : null;
 
-            metrics[log.mcName].min += Number(log.lossTime) || 0;
+        breakdownLogs.forEach(log => {
+            if (selectedMc && log.mcName !== selectedMc) return;
+            if (!metrics[log.mcName]) {
+                metrics[log.mcName] = { dt: 0, occ: 0 };
+            }
+
+            const logDateTime = `${log.date}T${log.time || '00:00'}`;
+            if (startDateTime && logDateTime < startDateTime) return;
+            if (endDateTime && logDateTime > endDateTime) return;
+
+            metrics[log.mcName].dt += Number(log.lossTime) || 0;
             metrics[log.mcName].occ += 1;
         });
 
         const q1 = [], q2 = [], q3 = [], q4 = [];
+        const mcList = selectedMc ? [selectedMc] : machineMaster.map(m => m.name);
 
-        Object.keys(metrics).forEach(mcName => {
-            const item = { name: mcName, min: metrics[mcName].min, occ: metrics[mcName].occ };
-            if (item.occ >= threshOcc && item.min >= threshDt) q1.push(item);
-            else if (item.occ < threshOcc && item.min >= threshDt) q2.push(item);
-            else if (item.occ >= threshOcc && item.min < threshDt) q3.push(item);
-            else q4.push(item);
+        mcList.forEach(mcName => {
+            const data = metrics[mcName] || { dt: 0, occ: 0 };
+            const item = { name: mcName, dt: data.dt, occ: data.occ };
+
+            if (item.occ >= threshOcc && item.dt >= threshDt) {
+                q1.push(item);
+            } else if (item.occ < threshOcc && item.dt >= threshDt) {
+                q2.push(item);
+            } else if (item.occ >= threshOcc && item.dt < threshDt) {
+                q3.push(item);
+            } else {
+                q4.push(item);
+            }
         });
 
-        const renderList = (id, countId, list) => {
-            document.getElementById(countId).innerText = list.length;
-            const container = document.getElementById(id);
-            if (!container) return;
-            if (list.length === 0) {
-                container.innerHTML = '<div style="font-size:11px; color:#aaa; font-style:italic;">No machines in this category.</div>';
-            } else {
-                let html = '';
-                list.forEach(m => {
-                    html += `
-                        <div class="q-item">
-                            <span><b>${m.name}</b></span>
-                            <span>${m.min} mins / ${m.occ} occ</span>
-                        </div>
-                    `;
-                });
-                container.innerHTML = html;
-            }
-        };
-
-        renderList('q1List', 'q1Count', q1);
-        renderList('q2List', 'q2Count', q2);
-        renderList('q3List', 'q3Count', q3);
-        renderList('q4List', 'q4Count', q4);
+        renderQList('q1List', 'q1Count', q1);
+        renderQList('q2List', 'q2Count', q2);
+        renderQList('q3List', 'q3Count', q3);
+        renderQList('q4List', 'q4Count', q4);
     }
 
-    function sendEmailViaWebGmail() {
-        const emailTo = Array.from(document.querySelectorAll('.emailToInput')).map(i => i.value.trim()).filter(Boolean).join(',');
-        const emailCc = Array.from(document.querySelectorAll('.emailCcInput')).map(i => i.value.trim()).filter(Boolean).join(',');
-        const subject = encodeURIComponent(document.getElementById('emailSubject').value);
+    function renderQList(containerId, countId, items) {
+        const container = document.getElementById(containerId);
+        const countElem = document.getElementById(countId);
+        if (countElem) countElem.innerText = items.length;
+        if (!container) return;
 
-        const kpi = getKpiMetrics();
-        const bodyText = `Hi Team,\n\nPlease find the summary status breakdown report below:\n\n- Overall Availability: ${kpi.overallAvail}%\n- Critical Machines Availability: ${kpi.critAvail}%\n- Total Downtime: ${kpi.overallBdHrs} Hrs\n- Total Occurrences: ${kpi.totalBdOcc}\n\nBest Regards,\nEquipment Maintenance Team`;
+        if (items.length === 0) {
+            container.innerHTML = '<div style="color:#aaa; font-size:11px; font-style:italic;">No machines in this quadrant</div>';
+            return;
+        }
 
-        const mailUrl = `https://mail.google.com/mail/?view=cm&fs=1&to=${encodeURIComponent(emailTo)}&cc=${encodeURIComponent(emailCc)}&su=${subject}&body=${encodeURIComponent(bodyText)}`;
-        window.open(mailUrl, '_blank');
+        let html = '';
+        items.sort((a,b) => b.dt - a.dt);
+        items.forEach(it => {
+            html += `
+                <div class="q-item">
+                    <strong>${it.name}</strong>
+                    <span>${it.occ} Occ | ${it.dt} Mins</span>
+                </div>
+            `;
+        });
+        container.innerHTML = html;
     }
 </script>
 </body>
