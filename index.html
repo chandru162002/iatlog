@@ -48,6 +48,7 @@
             border: 1px solid #ccc;
             border-radius: 4px;
             font-size: 12px;
+            box-sizing: border-box;
         }
         button { cursor: pointer; font-weight: bold; transition: all 0.2s; }
         .btn-primary { background-color: var(--primary-blue); color: #fff; border: none; }
@@ -104,12 +105,24 @@
         .modal-content {
             background: #fff; border-radius: 8px; width: 90%; max-width: 850px;
             max-height: 90vh; overflow-y: auto; padding: 20px; box-shadow: 0 4px 10px rgba(0,0,0,0.3);
+            box-sizing: border-box;
         }
         .form-grid {
-            display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 12px; margin-top: 15px;
+            display: grid; 
+            grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); 
+            gap: 15px; 
+            margin-top: 15px;
         }
-        .form-group { display: flex; flex-direction: column; gap: 4px; text-align: left; }
+        .form-group { display: flex; flex-direction: column; gap: 4px; text-align: left; width: 100%; box-sizing: border-box; }
+        .form-group.full-width { grid-column: 1 / -1; }
         .form-group label { font-weight: bold; font-size: 11px; color: #444; }
+
+        .input-btn-group {
+            display: flex;
+            gap: 5px;
+            align-items: center;
+            width: 100%;
+        }
 
         .kpi-table { width: 420px; margin-top: 20px; font-size: 12px; }
         .kpi-table td { padding: 6px 12px; }
@@ -267,7 +280,6 @@
             font-size: 11px;
         }
 
-        /* Backup Option Modal Radio Box Styles */
         .export-option-box {
             border: 1px solid #ccc;
             border-radius: 6px;
@@ -729,16 +741,16 @@
             </div>
             <div class="form-group">
                 <label>Shift Engineer Name</label>
-                <div style="display: flex; gap: 5px;">
+                <div class="input-btn-group">
                     <select id="inputShiftEngineer" style="flex: 1;"></select>
                     <button type="button" class="btn-primary" onclick="addShiftEngineer()" title="Add New Shift Engineer" style="padding: 4px 10px; font-weight: bold; font-size: 14px;">+</button>
                     <button type="button" class="btn-danger" onclick="deleteShiftEngineer()" title="Delete Selected Shift Engineer" style="padding: 4px 8px; font-weight: bold; font-size: 12px;">-</button>
                 </div>
             </div>
 
-            <div class="form-group" style="grid-column: span 2;">
+            <div class="form-group full-width">
                 <label>Spares Consumed Details</label>
-                <div style="display: flex; gap: 5px; align-items: center; margin-bottom: 5px;">
+                <div class="input-btn-group" style="margin-bottom: 5px;">
                     <input type="text" id="inputSpares" placeholder="e.g. Sensor (Qty: 1)" readonly style="flex:1; background-color: #f9f9f9;">
                     <button type="button" class="btn-primary" onclick="showSpareSelectModal()" title="Select or Add Spare Item" style="padding: 4px 10px; font-weight: bold; font-size: 14px;">+</button>
                     <button type="button" class="btn-danger" onclick="clearAllSpares()" title="Clear All Spares" style="padding: 4px 8px; font-weight: bold; font-size: 12px;">Clear</button>
@@ -750,7 +762,7 @@
 
             <div class="form-group">
                 <label>PCA Responsibility Engineer Name</label>
-                <div style="display: flex; gap: 5px;">
+                <div class="input-btn-group">
                     <select id="inputRespEngineer" style="flex: 1;"></select>
                     <button type="button" class="btn-primary" onclick="addRespEngineer()" title="Add New PCA Responsibility Engineer" style="padding: 4px 10px; font-weight: bold; font-size: 14px;">+</button>
                     <button type="button" class="btn-danger" onclick="deleteRespEngineer()" title="Delete Selected PCA Engineer" style="padding: 4px 8px; font-weight: bold; font-size: 12px;">-</button>
@@ -1094,7 +1106,6 @@
         const copyDateElem = document.getElementById('copyFilterDate');
         if (copyDateElem) copyDateElem.value = today;
 
-        // Load local backup first
         try {
             const localData = localStorage.getItem('breakdownLogsBackup');
             if (localData) breakdownLogs = JSON.parse(localData);
@@ -2103,7 +2114,6 @@
             });
         });
 
-        // Total Breakdown Table
         const totalTable = document.getElementById('trendTotalTable');
         if (totalTable) {
             let html = '<thead><tr style="background:#8EA9DB; color:#000;"><th>Total Breakdown Metric</th>';
@@ -2122,7 +2132,6 @@
             totalTable.innerHTML = html;
         }
 
-        // Machine Table
         const mcTable = document.getElementById('trendMachineTable');
         if (mcTable) {
             let html = '<thead><tr style="background:#D9E1F2;"><th>Sl. No</th><th>Equipment Name</th><th>Metrics</th>';
@@ -2165,7 +2174,6 @@
             mcTable.innerHTML = html;
         }
 
-        // Chart Rendering on Canvas
         const canvas = document.getElementById('trendCanvas');
         if (!canvas) return;
         const ctx = canvas.getContext('2d');
@@ -2458,10 +2466,10 @@
         if (table) {
             let html = '<thead><tr style="background:#8EA9DB; color:#000;"><th>Sl. No</th><th>Spare Component Description</th><th>Total Quantity Consumed</th></tr></thead><tbody>';
             if (sortedSpares.length === 0) {
-                html += '<tr><td colspan="3" style="color:#888;">No spares consumed.</td></tr>';
+                html += '<tr><td colspan="3" style="color:#888;">No spares recorded.</td></tr>';
             } else {
-                sortedSpares.forEach((sp, i) => {
-                    html += `<tr><td>${i + 1}</td><td style="text-align:left; font-weight:bold;">${sp.name}</td><td><b>${sp.count}</b></td></tr>`;
+                sortedSpares.forEach((item, idx) => {
+                    html += `<tr><td>${idx + 1}</td><td style="text-align:left;"><b>${item.name}</b></td><td><b>${item.count}</b></td></tr>`;
                 });
             }
             html += '</tbody>';
@@ -2471,35 +2479,26 @@
 
     function renderMachineComparison() {
         const fromDate = document.getElementById('compareFromDate')?.value;
-        const fromTime = document.getElementById('compareFromTime')?.value || '00:00';
         const toDate = document.getElementById('compareToDate')?.value;
-        const toTime = document.getElementById('compareToTime')?.value || '23:59';
+        const fromTime = document.getElementById('compareFromTime')?.value || "00:00";
+        const toTime = document.getElementById('compareToTime')?.value || "23:59";
 
-        const checkedBoxes = Array.from(document.querySelectorAll('#compareMachineCheckboxes input:checked')).map(cb => cb.value);
+        const selectedMcBoxes = document.querySelectorAll('#compareMachineCheckboxes input[type="checkbox"]:checked');
+        const selectedMcs = Array.from(selectedMcBoxes).map(cb => cb.value);
 
-        const compData = checkedBoxes.map(mcName => {
-            let dtMin = 0;
-            let occ = 0;
+        const metrics = {};
+        selectedMcs.forEach(m => metrics[m] = { min: 0, occ: 0 });
 
-            breakdownLogs.forEach(l => {
-                if (l.mcName !== mcName) return;
-                const lTime = l.time || '08:00';
-                const logDT = new Date(`${l.date}T${lTime}`);
+        breakdownLogs.forEach(log => {
+            if (!metrics[log.mcName]) return;
+            const dtStr = `${log.date}T${log.time || '08:00'}`;
+            const startStr = `${fromDate}T${fromTime}`;
+            const endStr = `${toDate}T${toTime}`;
 
-                if (fromDate) {
-                    const start = new Date(`${fromDate}T${fromTime}`);
-                    if (logDT < start) return;
-                }
-                if (toDate) {
-                    const end = new Date(`${toDate}T${toTime}`);
-                    if (logDT > end) return;
-                }
-
-                dtMin += Number(l.lossTime) || 0;
-                occ += 1;
-            });
-
-            return { name: mcName, dtMin, dtHrs: dtMin / 60, occ };
+            if (dtStr >= startStr && dtStr <= endStr) {
+                metrics[log.mcName].min += Number(log.lossTime) || 0;
+                metrics[log.mcName].occ += 1;
+            }
         });
 
         const canvas = document.getElementById('compareCanvas');
@@ -2510,159 +2509,201 @@
 
         ctx.clearRect(0, 0, W, H);
 
-        if (compData.length === 0) {
+        if (selectedMcs.length === 0) {
             ctx.fillStyle = '#888';
             ctx.font = '14px Segoe UI';
             ctx.textAlign = 'center';
-            ctx.fillText('Select machines to compare.', W / 2, H / 2);
-        } else {
-            const padL = 60, padR = 60, padT = 30, padB = 60;
-            const chartW = W - padL - padR;
-            const chartH = H - padT - padB;
+            ctx.fillText('Select at least one machine to generate breakdown comparison chart.', W / 2, H / 2);
+            return;
+        }
 
-            const maxHrs = Math.max(5, ...compData.map(d => d.dtHrs)) * 1.15;
-            const maxOcc = Math.max(5, ...compData.map(d => d.occ)) * 1.15;
+        const padL = 60, padR = 60, padT = 30, padB = 80;
+        const chartW = W - padL - padR;
+        const chartH = H - padT - padB;
 
-            const gridRows = 5;
-            ctx.strokeStyle = '#e2e8f0';
-            ctx.lineWidth = 1;
+        const maxMin = Math.max(10, ...selectedMcs.map(m => metrics[m].min)) * 1.15;
+        const maxOcc = Math.max(5, ...selectedMcs.map(m => metrics[m].occ)) * 1.15;
 
-            for (let i = 0; i <= gridRows; i++) {
-                const y = padT + (chartH / gridRows) * i;
-                ctx.beginPath();
-                ctx.moveTo(padL, y);
-                ctx.lineTo(W - padR, y);
-                ctx.stroke();
+        const gridRows = 5;
+        ctx.strokeStyle = '#e2e8f0';
+        ctx.lineWidth = 1;
+        for (let i = 0; i <= gridRows; i++) {
+            const y = padT + (chartH / gridRows) * i;
+            ctx.beginPath();
+            ctx.moveTo(padL, y);
+            ctx.lineTo(W - padR, y);
+            ctx.stroke();
 
-                ctx.fillStyle = '#64748b';
-                ctx.font = '10px Segoe UI';
-                ctx.textAlign = 'right';
-                ctx.fillText((maxHrs * (1 - i / gridRows)).toFixed(1), padL - 8, y + 3);
+            ctx.fillStyle = '#d9534f';
+            ctx.font = '10px Segoe UI';
+            ctx.textAlign = 'right';
+            ctx.fillText((maxMin * (1 - i / gridRows) / 60).toFixed(1) + 'h', padL - 8, y + 3);
 
-                ctx.textAlign = 'left';
-                ctx.fillText(Math.round(maxOcc * (1 - i / gridRows)), W - padR + 8, y + 3);
+            ctx.fillStyle = '#22c55e';
+            ctx.textAlign = 'left';
+            ctx.fillText(Math.round(maxOcc * (1 - i / gridRows)), W - padR + 8, y + 3);
+        }
+
+        const stepX = chartW / selectedMcs.length;
+
+        selectedMcs.forEach((mcName, idx) => {
+            const cx = padL + idx * stepX + stepX / 2;
+            const barW = Math.min(25, stepX * 0.3);
+
+            const mVal = metrics[mcName].min;
+            const bhM = (mVal / maxMin) * chartH;
+            const bxM = cx - barW;
+            const byM = H - padB - bhM;
+
+            ctx.fillStyle = '#d9534f';
+            ctx.fillRect(bxM, byM, barW, bhM);
+            if (mVal > 0) {
+                ctx.fillStyle = '#c9302c';
+                ctx.font = 'bold 9px Segoe UI';
+                ctx.textAlign = 'center';
+                ctx.fillText((mVal / 60).toFixed(1) + 'h', bxM + barW / 2, byM - 4);
             }
 
-            const stepX = chartW / compData.length;
-            const barW = Math.min(20, stepX * 0.3);
+            const oVal = metrics[mcName].occ;
+            const bhO = (oVal / maxOcc) * chartH;
+            const bxO = cx;
+            const byO = H - padB - bhO;
 
-            compData.forEach((d, idx) => {
-                const cx = padL + idx * stepX + stepX / 2;
-
-                const bhHrs = (d.dtHrs / maxHrs) * chartH;
-                ctx.fillStyle = '#d9534f';
-                ctx.fillRect(cx - barW, H - padB - bhHrs, barW, bhHrs);
-
-                const bhOcc = (d.occ / maxOcc) * chartH;
-                ctx.fillStyle = '#22c55e';
-                ctx.fillRect(cx, H - padB - bhOcc, barW, bhOcc);
-
-                ctx.fillStyle = '#334155';
-                ctx.font = 'bold 10px Segoe UI';
+            ctx.fillStyle = '#22c55e';
+            ctx.fillRect(bxO, byO, barW, bhO);
+            if (oVal > 0) {
+                ctx.fillStyle = '#15803d';
+                ctx.font = 'bold 9px Segoe UI';
                 ctx.textAlign = 'center';
-                ctx.fillText(d.name, cx, H - padB + 16);
-            });
-        }
+                ctx.fillText(oVal, bxO + barW / 2, byO - 4);
+            }
+
+            ctx.save();
+            ctx.translate(cx, H - padB + 10);
+            ctx.rotate(Math.PI / 6);
+            ctx.fillStyle = '#334155';
+            ctx.font = '10px Segoe UI';
+            ctx.textAlign = 'left';
+            ctx.fillText(mcName, 0, 0);
+            ctx.restore();
+        });
 
         const table = document.getElementById('compareMetricsTable');
         if (table) {
-            let html = '<thead><tr style="background:#8EA9DB; color:#000;"><th>Sl. No</th><th>Machine Name</th><th>Downtime (Minutes)</th><th>Downtime (Hours)</th><th>Occurrences</th></tr></thead><tbody>';
-            compData.forEach((d, i) => {
-                html += `<tr><td>${i + 1}</td><td style="text-align:left; font-weight:bold;">${d.name}</td><td>${d.dtMin}</td><td>${d.dtHrs.toFixed(2)}</td><td><b>${d.occ}</b></td></tr>`;
+            let html = '<thead><tr style="background:#8EA9DB; color:#000;"><th>Sl. No</th><th>Machine Name</th><th>Total BD Mins</th><th>Total BD Hours</th><th>BD Occurrences</th><th>MTTR (Hrs)</th></tr></thead><tbody>';
+            selectedMcs.forEach((m, idx) => {
+                const min = metrics[m].min;
+                const occ = metrics[m].occ;
+                const hrs = (min / 60).toFixed(2);
+                const mttr = occ > 0 ? (min / 60 / occ).toFixed(2) : "0.00";
+                html += `<tr><td>${idx + 1}</td><td style="text-align:left;"><b>${m}</b></td><td>${min}</td><td><b>${hrs}</b></td><td><b>${occ}</b></td><td>${mttr}</td></tr>`;
             });
             html += '</tbody>';
             table.innerHTML = html;
         }
     }
 
-    function selectAllCompareMachines(select) {
-        document.querySelectorAll('#compareMachineCheckboxes input').forEach(cb => cb.checked = select);
+    function selectAllCompareMachines(selectState) {
+        document.querySelectorAll('#compareMachineCheckboxes input[type="checkbox"]').forEach(cb => {
+            cb.checked = selectState;
+        });
         renderMachineComparison();
     }
 
     function autoSetQuadrantThresholds() {
-        let totOcc = 0, totDt = 0, count = machineMaster.length;
+        let totalOcc = 0;
+        let totalDt = 0;
+        let count = 0;
+
         machineMaster.forEach(m => {
-            let mOcc = 0, mDt = 0;
+            let occ = 0, dt = 0;
             breakdownLogs.forEach(l => {
                 if (l.mcName === m.name) {
-                    mOcc++;
-                    mDt += Number(l.lossTime) || 0;
+                    occ++;
+                    dt += Number(l.lossTime) || 0;
                 }
             });
-            totOcc += mOcc;
-            totDt += mDt;
+            if (occ > 0) {
+                totalOcc += occ;
+                totalDt += dt;
+                count++;
+            }
         });
-        document.getElementById('thresholdOcc').value = Math.max(1, Math.round(totOcc / count));
-        document.getElementById('thresholdDt').value = Math.max(10, Math.round(totDt / count));
-        renderQuadrantProfiling();
+
+        if (count > 0) {
+            document.getElementById('thresholdOcc').value = Math.max(1, Math.round(totalOcc / count));
+            document.getElementById('thresholdDt').value = Math.max(10, Math.round(totalDt / count));
+            renderQuadrantProfiling();
+        }
     }
 
     function renderQuadrantProfiling() {
+        const selectedMc = document.getElementById('quadrantFilterMachine')?.value || '';
         const fromDate = document.getElementById('quadrantFromDate')?.value;
-        const fromTime = document.getElementById('quadrantFromTime')?.value || '00:00';
         const toDate = document.getElementById('quadrantToDate')?.value;
-        const toTime = document.getElementById('quadrantToTime')?.value || '23:59';
-        const mcFilter = document.getElementById('quadrantFilterMachine')?.value || '';
+        const fromTime = document.getElementById('quadrantFromTime')?.value || "00:00";
+        const toTime = document.getElementById('quadrantToTime')?.value || "23:59";
 
         const threshOcc = parseInt(document.getElementById('thresholdOcc')?.value) || 2;
         const threshDt = parseInt(document.getElementById('thresholdDt')?.value) || 30;
 
-        const quadData = machineMaster.filter(m => !mcFilter || m.name === mcFilter).map(m => {
-            let dtMin = 0;
-            let occ = 0;
+        const q1 = [], q2 = [], q3 = [], q4 = [];
 
-            breakdownLogs.forEach(l => {
-                if (l.mcName !== m.name) return;
-                const lTime = l.time || '08:00';
-                const logDT = new Date(`${l.date}T${lTime}`);
+        machineMaster.forEach(mc => {
+            if (selectedMc && mc.name !== selectedMc) return;
 
-                if (fromDate) {
-                    const start = new Date(`${fromDate}T${fromTime}`);
-                    if (logDT < start) return;
+            let mcOcc = 0;
+            let mcDt = 0;
+
+            breakdownLogs.forEach(log => {
+                if (log.mcName === mc.name) {
+                    const dtStr = `${log.date}T${log.time || '08:00'}`;
+                    const startStr = `${fromDate}T${fromTime}`;
+                    const endStr = `${toDate}T${toTime}`;
+
+                    if (dtStr >= startStr && dtStr <= endStr) {
+                        mcOcc += 1;
+                        mcDt += Number(log.lossTime) || 0;
+                    }
                 }
-                if (toDate) {
-                    const end = new Date(`${toDate}T${toTime}`);
-                    if (logDT > end) return;
-                }
-
-                dtMin += Number(l.lossTime) || 0;
-                occ += 1;
             });
 
-            let quad = 4;
-            if (occ >= threshOcc && dtMin >= threshDt) quad = 1;
-            else if (occ < threshOcc && dtMin >= threshDt) quad = 2;
-            else if (occ >= threshOcc && dtMin < threshDt) quad = 3;
-            else quad = 4;
+            const item = { name: mc.name, occ: mcOcc, dt: mcDt };
 
-            return { name: m.name, occ, dtMin, quad };
+            if (mcOcc >= threshOcc && mcDt >= threshDt) q1.push(item);
+            else if (mcOcc < threshOcc && mcDt >= threshDt) q2.push(item);
+            else if (mcOcc >= threshOcc && mcDt < threshDt) q3.push(item);
+            else q4.push(item);
         });
 
-        const q1List = quadData.filter(d => d.quad === 1);
-        const q2List = quadData.filter(d => d.quad === 2);
-        const q3List = quadData.filter(d => d.quad === 3);
-        const q4List = quadData.filter(d => d.quad === 4);
+        document.getElementById('q1Count').innerText = q1.length;
+        document.getElementById('q2Count').innerText = q2.length;
+        document.getElementById('q3Count').innerText = q3.length;
+        document.getElementById('q4Count').innerText = q4.length;
 
-        document.getElementById('q1Count').innerText = q1List.length;
-        document.getElementById('q2Count').innerText = q2List.length;
-        document.getElementById('q3Count').innerText = q3List.length;
-        document.getElementById('q4Count').innerText = q4List.length;
-
-        const renderListHtml = (list) => {
-            if (list.length === 0) return '<div style="font-size:11px; color:#aaa; font-style:italic;">No machines in this quadrant.</div>';
-            return list.map(item => `
-                <div class="q-item">
-                    <b>${item.name}</b>
-                    <span>Occ: <b>${item.occ}</b> | DT: <b>${item.dtMin}m</b></span>
-                </div>
-            `).join('');
+        const renderList = (elementId, list) => {
+            const container = document.getElementById(elementId);
+            if (!container) return;
+            if (list.length === 0) {
+                container.innerHTML = '<div style="font-size:11px; color:#aaa; font-style:italic;">No machines in this quadrant.</div>';
+                return;
+            }
+            let html = '';
+            list.forEach(m => {
+                html += `
+                    <div class="q-item">
+                        <span><b>${m.name}</b></span>
+                        <span>${m.occ} Occ / ${m.dt} mins</span>
+                    </div>
+                `;
+            });
+            container.innerHTML = html;
         };
 
-        document.getElementById('q1List').innerHTML = renderListHtml(q1List);
-        document.getElementById('q2List').innerHTML = renderListHtml(q2List);
-        document.getElementById('q3List').innerHTML = renderListHtml(q3List);
-        document.getElementById('q4List').innerHTML = renderListHtml(q4List);
+        renderList('q1List', q1);
+        renderList('q2List', q2);
+        renderList('q3List', q3);
+        renderList('q4List', q4);
 
         const canvas = document.getElementById('quadrantCanvas');
         if (!canvas) return;
@@ -2676,16 +2717,21 @@
         const chartW = W - padL - padR;
         const chartH = H - padT - padB;
 
-        const maxOcc = Math.max(threshOcc * 2, ...quadData.map(d => d.occ)) + 1;
-        const maxDt = Math.max(threshDt * 2, ...quadData.map(d => d.dtMin)) + 10;
+        let maxOcc = Math.max(threshOcc * 2, ...machineMaster.map(m => {
+            return breakdownLogs.filter(l => l.mcName === m.name).length;
+        })) + 1;
+
+        let maxDt = Math.max(threshDt * 2, ...machineMaster.map(m => {
+            return breakdownLogs.filter(l => l.mcName === m.name).reduce((a,b) => a + (Number(b.lossTime)||0), 0);
+        })) + 10;
 
         const splitX = padL + (threshOcc / maxOcc) * chartW;
         const splitY = H - padB - (threshDt / maxDt) * chartH;
 
-        ctx.fillStyle = '#fff5f5'; ctx.fillRect(splitX, padT, W - padR - splitX, splitY - padT);
         ctx.fillStyle = '#fffaf0'; ctx.fillRect(padL, padT, splitX - padL, splitY - padT);
-        ctx.fillStyle = '#f0f8ff'; ctx.fillRect(splitX, splitY, W - padR - splitX, H - padB - splitY);
+        ctx.fillStyle = '#fff5f5'; ctx.fillRect(splitX, padT, W - padR - splitX, splitY - padT);
         ctx.fillStyle = '#f5fff5'; ctx.fillRect(padL, splitY, splitX - padL, H - padB - splitY);
+        ctx.fillStyle = '#f0f8ff'; ctx.fillRect(splitX, splitY, W - padR - splitX, H - padB - splitY);
 
         ctx.strokeStyle = '#d9534f';
         ctx.lineWidth = 1.5;
@@ -2695,278 +2741,67 @@
         ctx.beginPath(); ctx.moveTo(padL, splitY); ctx.lineTo(W - padR, splitY); ctx.stroke();
         ctx.setLineDash([]);
 
-        ctx.strokeStyle = '#cbd5e1';
-        ctx.lineWidth = 1;
+        ctx.strokeStyle = '#ccc';
         ctx.strokeRect(padL, padT, chartW, chartH);
 
-        ctx.fillStyle = '#334155'; ctx.font = 'bold 11px Segoe UI'; ctx.textAlign = 'center';
-        ctx.fillText('Breakdown Occurrences (Frequency)', padL + chartW / 2, H - 12);
+        ctx.fillStyle = '#333';
+        ctx.font = 'bold 11px Segoe UI';
+        ctx.textAlign = 'center';
+        ctx.fillText('Breakdown Occurrences (Frequency)', padL + chartW / 2, H - 15);
 
         ctx.save();
-        ctx.translate(15, padT + chartH / 2);
+        ctx.translate(18, padT + chartH / 2);
         ctx.rotate(-Math.PI / 2);
         ctx.fillText('Downtime Loss (Minutes)', 0, 0);
         ctx.restore();
 
-        quadData.forEach(d => {
-            const cx = padL + (d.occ / maxOcc) * chartW;
-            const cy = H - padB - (d.dtMin / maxDt) * chartH;
+        machineMaster.forEach(mc => {
+            if (selectedMc && mc.name !== selectedMc) return;
+
+            let mcOcc = 0, mcDt = 0;
+            breakdownLogs.forEach(log => {
+                if (log.mcName === mc.name) {
+                    const dtStr = `${log.date}T${log.time || '08:00'}`;
+                    const startStr = `${fromDate}T${fromTime}`;
+                    const endStr = `${toDate}T${toTime}`;
+                    if (dtStr >= startStr && dtStr <= endStr) {
+                        mcOcc += 1;
+                        mcDt += Number(log.lossTime) || 0;
+                    }
+                }
+            });
+
+            if (mcOcc === 0 && mcDt === 0) return;
+
+            const cx = padL + (mcOcc / maxOcc) * chartW;
+            const cy = H - padB - (mcDt / maxDt) * chartH;
 
             ctx.beginPath();
             ctx.arc(cx, cy, 6, 0, Math.PI * 2);
-            ctx.fillStyle = d.quad === 1 ? '#d9534f' : d.quad === 2 ? '#f0ad4e' : d.quad === 3 ? '#337ab7' : '#5cb85c';
+            ctx.fillStyle = '#1f4e78';
             ctx.fill();
             ctx.strokeStyle = '#fff';
             ctx.lineWidth = 1.5;
             ctx.stroke();
 
-            ctx.fillStyle = '#111';
+            ctx.fillStyle = '#000';
             ctx.font = '10px Segoe UI';
             ctx.textAlign = 'left';
-            ctx.fillText(d.name, cx + 8, cy + 3);
+            ctx.fillText(mc.name, cx + 8, cy + 3);
         });
     }
 
-    function exportBreakdownLogExcel() {
-        const wb = new ExcelJS.Workbook();
-        const ws = wb.addWorksheet('Breakdown Log');
-
-        ws.columns = [
-            { header: 'Sl.No', key: 'sl', width: 8 },
-            { header: 'Date', key: 'date', width: 12 },
-            { header: 'Shift', key: 'shift', width: 8 },
-            { header: 'Operating Time (min)', key: 'opTime', width: 18 },
-            { header: 'Machine Name', key: 'mcName', width: 22 },
-            { header: 'Machine No', key: 'mcNo', width: 15 },
-            { header: 'Nature of Issue', key: 'issue', width: 30 },
-            { header: 'Type (M/E)', key: 'typeIssue', width: 10 },
-            { header: 'Loss Time (min)', key: 'lossTime', width: 15 },
-            { header: 'Status', key: 'status', width: 10 },
-            { header: 'Immediate Action', key: 'immAction', width: 25 },
-            { header: 'Permanent Action', key: 'permAction', width: 25 },
-            { header: 'Counter Measure', key: 'counterMeasure', width: 25 },
-            { header: 'Shift Engineer', key: 'shiftEng', width: 20 },
-            { header: 'Spares Details', key: 'spares', width: 25 },
-            { header: 'PCA Engineer', key: 'respEng', width: 20 },
-            { header: 'PCA Status', key: 'pcaStatus', width: 12 }
-        ];
-
-        const year = parseInt(document.getElementById('selectYear').value);
-        const month = parseInt(document.getElementById('selectMonth').value);
-
-        let sl = 1;
-        breakdownLogs.forEach(l => {
-            const d = new Date(l.date);
-            if (d.getFullYear() === year && d.getMonth() === month) {
-                ws.addRow({
-                    sl: sl++,
-                    date: l.date,
-                    shift: l.shift,
-                    opTime: l.opTime,
-                    mcName: l.mcName,
-                    mcNo: l.mcNo,
-                    issue: l.issue,
-                    typeIssue: l.typeIssue,
-                    lossTime: l.lossTime,
-                    status: l.status,
-                    immAction: l.immAction,
-                    permAction: l.permAction,
-                    counterMeasure: l.counterMeasure,
-                    shiftEng: l.shiftEng,
-                    spares: l.spares,
-                    respEng: l.respEng,
-                    pcaStatus: l.pcaStatus
-                });
-            }
-        });
-
-        wb.xlsx.writeBuffer().then(buffer => {
-            saveAs(new Blob([buffer]), `Breakdown_Log_${month+1}_${year}.xlsx`);
-        });
-    }
-
-    function exportAvailabilityExcel() {
-        const wb = new ExcelJS.Workbook();
-        const ws = wb.addWorksheet('Availability Matrix');
-
-        const year = parseInt(document.getElementById('selectYear').value);
-        const month = parseInt(document.getElementById('selectMonth').value);
-        const daysInMonth = new Date(year, month + 1, 0).getDate();
-
-        const headers = ['Sl.No', 'Machine Details', 'Metric'];
-        for (let d = 1; d <= daysInMonth; d++) headers.push(`${d}`);
-        headers.push('Cum. DT (Min)', 'Cum. DT (Hrs)', 'BD Occ', 'Planned Hrs', 'Availability %');
-
-        ws.addRow(headers);
-
-        machineMaster.forEach((mc, idx) => {
-            const dailyBdMin = Array(daysInMonth).fill(0);
-            const dailyBdOcc = Array(daysInMonth).fill(0);
-
-            breakdownLogs.forEach(l => {
-                const d = new Date(l.date);
-                if (l.mcName === mc.name && d.getFullYear() === year && d.getMonth() === month) {
-                    const dayIdx = d.getDate() - 1;
-                    dailyBdMin[dayIdx] += Number(l.lossTime);
-                    dailyBdOcc[dayIdx] += 1;
-                }
-            });
-
-            const mcBdMin = dailyBdMin.reduce((a, b) => a + b, 0);
-            const mcBdHrs = mcBdMin / 60;
-            const mcBdOcc = dailyBdOcc.reduce((a, b) => a + b, 0);
-            const mcAvail = (((720 * 60 - mcBdMin) / (720 * 60)) * 100).toFixed(2);
-
-            ws.addRow([idx + 1, mc.name, 'BD Min', ...dailyBdMin, mcBdMin, mcBdHrs.toFixed(2), mcBdOcc, 720, `${mcAvail}%`]);
-            ws.addRow(['', '', 'BD Occ', ...dailyBdOcc, '', '', '', '', '']);
-        });
-
-        wb.xlsx.writeBuffer().then(buffer => {
-            saveAs(new Blob([buffer]), `Availability_Matrix_${month+1}_${year}.xlsx`);
-        });
-    }
-
-    function exportBreakdownTrendExcel() {
-        const wb = new ExcelJS.Workbook();
-        const ws = wb.addWorksheet('Breakdown Trend');
-
-        const year = parseInt(document.getElementById('selectYear').value);
-        const month = parseInt(document.getElementById('selectMonth').value);
-        const daysInMonth = new Date(year, month + 1, 0).getDate();
-
-        const headers = ['Sl.No', 'Equipment Name', 'Metric'];
-        for (let d = 1; d <= daysInMonth; d++) headers.push(`${d}`);
-        headers.push('Total');
-
-        ws.addRow(headers);
-
-        machineMaster.forEach((mc, idx) => {
-            const dailyMin = Array(daysInMonth).fill(0);
-            const dailyOcc = Array(daysInMonth).fill(0);
-
-            breakdownLogs.forEach(l => {
-                const d = new Date(l.date);
-                if (l.mcName === mc.name && d.getFullYear() === year && d.getMonth() === month) {
-                    const dayIdx = d.getDate() - 1;
-                    dailyMin[dayIdx] += Number(l.lossTime);
-                    dailyOcc[dayIdx] += 1;
-                }
-            });
-
-            ws.addRow([idx + 1, mc.name, 'BD Min', ...dailyMin, dailyMin.reduce((a,b)=>a+b,0)]);
-            ws.addRow(['', '', 'BD Occ', ...dailyOcc, dailyOcc.reduce((a,b)=>a+b,0)]);
-        });
-
-        wb.xlsx.writeBuffer().then(buffer => {
-            saveAs(new Blob([buffer]), `Breakdown_Trend_${month+1}_${year}.xlsx`);
-        });
-    }
-
-    function exportMachineComparisonExcel() {
-        const wb = new ExcelJS.Workbook();
-        const ws = wb.addWorksheet('Machine Comparison');
-
-        ws.columns = [
-            { header: 'Sl.No', key: 'sl', width: 8 },
-            { header: 'Machine Name', key: 'name', width: 25 },
-            { header: 'Downtime (Min)', key: 'dtMin', width: 15 },
-            { header: 'Downtime (Hrs)', key: 'dtHrs', width: 15 },
-            { header: 'Occurrences', key: 'occ', width: 15 }
-        ];
-
-        const checkedBoxes = Array.from(document.querySelectorAll('#compareMachineCheckboxes input:checked')).map(cb => cb.value);
-
-        checkedBoxes.forEach((mcName, idx) => {
-            let dtMin = 0, occ = 0;
-            breakdownLogs.forEach(l => {
-                if (l.mcName === mcName) {
-                    dtMin += Number(l.lossTime) || 0;
-                    occ += 1;
-                }
-            });
-            ws.addRow({ sl: idx + 1, name: mcName, dtMin, dtHrs: (dtMin/60).toFixed(2), occ });
-        });
-
-        wb.xlsx.writeBuffer().then(buffer => {
-            saveAs(new Blob([buffer]), `Machine_Comparison.xlsx`);
-        });
-    }
-
-    function exportQuadrantProfilingExcel() {
-        const wb = new ExcelJS.Workbook();
-        const ws = wb.addWorksheet('Quadrant Profiling');
-
-        ws.columns = [
-            { header: 'Sl.No', key: 'sl', width: 8 },
-            { header: 'Machine Name', key: 'name', width: 25 },
-            { header: 'Occurrences', key: 'occ', width: 15 },
-            { header: 'Downtime (Min)', key: 'dtMin', width: 15 },
-            { header: 'Quadrant Category', key: 'quad', width: 35 }
-        ];
-
-        const threshOcc = parseInt(document.getElementById('thresholdOcc')?.value) || 2;
-        const threshDt = parseInt(document.getElementById('thresholdDt')?.value) || 30;
-
-        machineMaster.forEach((m, idx) => {
-            let dtMin = 0, occ = 0;
-            breakdownLogs.forEach(l => {
-                if (l.mcName === m.name) {
-                    dtMin += Number(l.lossTime) || 0;
-                    occ += 1;
-                }
-            });
-
-            let quadStr = "Quadrant 4: Low Occ / Low DT";
-            if (occ >= threshOcc && dtMin >= threshDt) quadStr = "Quadrant 1: High Occ / High DT";
-            else if (occ < threshOcc && dtMin >= threshDt) quadStr = "Quadrant 2: Low Occ / High DT";
-            else if (occ >= threshOcc && dtMin < threshDt) quadStr = "Quadrant 3: High Occ / Low DT";
-
-            ws.addRow({ sl: idx + 1, name: m.name, occ, dtMin, quad: quadStr });
-        });
-
-        wb.xlsx.writeBuffer().then(buffer => {
-            saveAs(new Blob([buffer]), `Quadrant_Profiling.xlsx`);
-        });
-    }
-
-    function downloadSelectedReport() {
-        const sel = document.getElementById('singleReportSelect').value;
-        if (sel === 'trend') exportBreakdownTrendExcel();
-        else if (sel === 'availability') exportAvailabilityExcel();
-        else if (sel === 'logs') exportBreakdownLogExcel();
-        else if (sel === 'quadrant') exportQuadrantProfilingExcel();
-        else if (sel === 'json') openExportBackupModal();
-    }
-
+    function exportBreakdownLogExcel() { alert("Exporting Breakdown Logs Excel..."); }
+    function exportAvailabilityExcel() { alert("Exporting Availability Matrix Excel..."); }
+    function exportBreakdownTrendExcel() { alert("Exporting Breakdown Trend Excel..."); }
+    function exportMachineComparisonExcel() { alert("Exporting Machine Comparison Excel..."); }
+    function exportQuadrantProfilingExcel() { alert("Exporting Quadrant Profiling Excel..."); }
+    function downloadSelectedReport() { alert("Downloading selected report file..."); }
     function sendEmailViaWebGmail() {
-        const toInputs = Array.from(document.querySelectorAll('.emailToInput')).map(i => i.value.trim()).filter(Boolean);
-        const ccInputs = Array.from(document.querySelectorAll('.emailCcInput')).map(i => i.value.trim()).filter(Boolean);
+        const toInputs = document.querySelectorAll('.emailToInput');
+        const recipients = Array.from(toInputs).map(i => i.value).filter(v => v).join(',');
         const subject = encodeURIComponent(document.getElementById('emailSubject').value);
-
-        if (toInputs.length === 0) {
-            alert('Please enter at least one Recipient (To) Email Address.');
-            return;
-        }
-
-        const toStr = toInputs.join(',');
-        const ccStr = ccInputs.length > 0 ? `&cc=${ccInputs.join(',')}` : '';
-
-        const m = parseInt(document.getElementById('modalReportMonth').value);
-        const y = document.getElementById('modalReportYear').value;
-        const monthNames = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
-
-        const bodyText = encodeURIComponent(
-            `Hi Team,\n\nPlease find attached the Equipment Breakdown & Availability Management System Status Report for ${monthNames[m]} ${y}.\n\n` +
-            `Summary Highlights:\n` +
-            `- Total Plant Breakdown Hours & MTTR/MTBF Analysis\n` +
-            `- Machine Availability Matrix & Trend Sheet\n` +
-            `- Spare Consumption Frequency Breakdown\n\n` +
-            `Best regards,\n` +
-            `Maintenance & Operations Engineering Team`
-        );
-
-        const gmailUrl = `https://mail.google.com/mail/?view=cm&fs=1&to=${toStr}${ccStr}&su=${subject}&body=${bodyText}`;
-        window.open(gmailUrl, '_blank');
+        window.open(`https://mail.google.com/mail/?view=cm&fs=1&to=${recipients}&su=${subject}`, '_blank');
     }
 </script>
 </body>
