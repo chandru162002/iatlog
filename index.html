@@ -214,25 +214,12 @@
             background: #fdfdfd;
             margin-top: 10px;
         }
-        .checkbox-group {
-            display: flex;
-            flex-direction: column;
-            gap: 8px;
-            margin-top: 6px;
-        }
         .checkbox-label {
             display: flex;
             align-items: center;
             gap: 8px;
             font-weight: normal;
             cursor: pointer;
-        }
-        .report-item-row {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            padding: 4px 0;
-            border-bottom: 1px dashed #eee;
         }
         
         .copy-preview-box {
@@ -330,9 +317,6 @@
             <button class="btn-email" onclick="openEmailModal()">✉️ Send Email Report</button>
             <button class="btn-save" onclick="openExportBackupModal()">📁 Export Backup (.json)</button>
             <button class="btn-save" onclick="loadFromFile()">📂 Load Backup (.json)</button>
-            <button class="btn-excel" onclick="exportBreakdownLogExcel()">Export Breakdown (.xlsx)</button>
-            <button class="btn-excel" onclick="exportAvailabilityExcel()">Export Availability (.xlsx)</button>
-            <button class="btn-excel" onclick="exportBreakdownTrendExcel()">Export Trend (.xlsx)</button>
         </div>
     </div>
 
@@ -362,6 +346,7 @@
             </select>
             <button class="btn-primary" onclick="clearFilters()">Reset Filters</button>
             <button class="btn-primary" onclick="openAddModal()">+ Add Breakdown Entry</button>
+            <button class="btn-primary" style="background-color: #2b6cb0;" onclick="openMachineModal()">🤖 Manage Machines (+ / -)</button>
         </div>
 
         <div class="table-wrap">
@@ -442,9 +427,6 @@
     <div id="trendTab" class="tab-content">
         <div style="display: flex; justify-content: space-between; align-items: center; background: #eef2f7; padding: 10px 14px; border-radius: 6px; border: 1px solid #b8cce4; margin-bottom: 12px;">
             <span style="font-weight: bold; font-size: 14px; color: var(--primary-blue);">📊 Breakdown Trend Sheet & Report Analysis</span>
-            <button class="btn-excel" onclick="exportBreakdownTrendExcel()" style="padding: 8px 16px; font-size: 13px; display: flex; align-items: center; gap: 6px;">
-                📥 Download Breakdown Trend Sheet (.xlsx)
-            </button>
         </div>
 
         <table class="doc-header-table">
@@ -575,8 +557,6 @@
                     <input type="date" id="compareToDate" onchange="renderMachineComparison()">
                     <label><b>Time:</b></label>
                     <input type="time" id="compareToTime" value="23:59" onchange="renderMachineComparison()">
-
-                    <button class="btn-excel" style="margin-left:8px;" onclick="exportMachineComparisonExcel()">Export Comparison (.xlsx)</button>
                 </div>
             </div>
 
@@ -628,12 +608,7 @@
             <label style="margin-left:8px;"><b>DT Thresh (Mins):</b></label>
             <input type="number" id="thresholdDt" value="30" min="1" style="width:60px;" onchange="renderQuadrantProfiling()">
 
-            <button class="btn-primary" onclick="autoSetQuadrantThresholds()">Auto-Set Averages</button>
-            <button class="btn-excel" onclick="exportQuadrantProfilingExcel()">Export Quadrant (.xlsx)</button>
-        </div>
-
-        <div class="trend-canvas-container" style="margin-top:10px;">
-            <canvas id="quadrantCanvas" width="1100" height="380"></canvas>
+            <button class="btn-primary" onclick="renderQuadrantProfiling()">Refresh Profiling</button>
         </div>
 
         <div class="quadrant-grid">
@@ -672,6 +647,47 @@
                 <div style="font-size:10px; color:#666; margin-bottom:8px;">Frequent Minor Stops / Nuisance Issues</div>
                 <div id="q3List" class="q-item-list"></div>
             </div>
+        </div>
+    </div>
+</div>
+
+<!-- MODAL: Manage Machines Pop-up -->
+<div id="machineModal" class="modal">
+    <div class="modal-content" style="max-width: 500px;">
+        <h3 style="margin-top:0; color:var(--primary-blue);">🤖 Machine Name Master Control</h3>
+        <p style="font-size:11px; color:#666;">Add new equipment names or remove existing ones. Added machines will automatically integrate across all sheets, reports, and availability matrices.</p>
+
+        <div class="form-group" style="margin-bottom: 12px;">
+            <label>Machine Name *</label>
+            <input type="text" id="newMachineNameInput" placeholder="e.g. DURR 5 or BENCH 99">
+        </div>
+
+        <div class="form-group" style="margin-bottom: 12px;">
+            <label>Machine Number (Optional)</label>
+            <input type="text" id="newMachineNoInput" placeholder="e.g. OP30099">
+        </div>
+
+        <div class="form-group" style="margin-bottom: 15px;">
+            <label class="checkbox-label">
+                <input type="checkbox" id="newMachineCritical">
+                <span>Mark as Critical Equipment</span>
+            </label>
+        </div>
+
+        <div style="display: flex; gap: 10px; justify-content: flex-end; margin-bottom: 15px; border-bottom: 1px solid #ccc; padding-bottom: 15px;">
+            <button class="btn-primary" onclick="addNewMachine()">+ Add Machine Name</button>
+        </div>
+
+        <div class="form-group" style="margin-bottom: 12px;">
+            <label>Delete Existing Machine:</label>
+            <div class="input-btn-group">
+                <select id="deleteMachineSelect" style="flex:1;"></select>
+                <button class="btn-danger" onclick="deleteSelectedMachine()">Delete</button>
+            </div>
+        </div>
+
+        <div style="margin-top:20px; text-align:right;">
+            <button style="background:#6c757d; color:#fff;" onclick="closeMachineModal()">Close</button>
         </div>
     </div>
 </div>
@@ -778,7 +794,7 @@
             </div>
         </div>
 
-        <div style="margin-top:20px; text-align:right; display:flex; gap:10px; justify-content:flex-end;">
+        <div style="margin-top:20px; text-align:right; display:flex; gap:10px; justify-flex-end;">
             <button style="background:#6c757d; color:#fff;" onclick="closeAddModal()">Cancel</button>
             <button class="btn-primary" onclick="saveBreakdownEntry()">Save Entry</button>
         </div>
@@ -896,47 +912,6 @@
             ✉️ Send Equipment Breakdown & Availability Report via Email
         </h3>
 
-        <div class="email-form-section" style="background-color: #eef2f7; border: 1px solid #b8cce4;">
-            <label style="font-weight:bold; font-size:12px; color:var(--primary-blue);">🎯 Report Target Period Filters:</label>
-            <div style="display: flex; gap: 15px; margin-top: 8px; align-items: center; flex-wrap: wrap;">
-                <div>
-                    <label><b>Month:</b></label>
-                    <select id="modalReportMonth">
-                        <option value="0">January</option>
-                        <option value="1">February</option>
-                        <option value="2">March</option>
-                        <option value="3">April</option>
-                        <option value="4">May</option>
-                        <option value="5">June</option>
-                        <option value="6">July</option>
-                        <option value="7">August</option>
-                        <option value="8">September</option>
-                        <option value="9">October</option>
-                        <option value="10">November</option>
-                        <option value="11">December</option>
-                    </select>
-                </div>
-                <div>
-                    <label><b>Year:</b></label>
-                    <select id="modalReportYear"></select>
-                </div>
-            </div>
-        </div>
-
-        <div class="email-form-section">
-            <label style="font-weight:bold; font-size:12px; color:var(--primary-blue);">📥 Select & Download Individual Report File:</label>
-            <div style="display: flex; gap: 10px; margin-top: 8px; align-items: center; flex-wrap: wrap;">
-                <select id="singleReportSelect" style="flex: 1; padding: 6px; font-weight: bold;">
-                    <option value="trend">Breakdown Trend Sheet (.xlsx File)</option>
-                    <option value="availability">Availability Matrix & KPI Summary (.xlsx File)</option>
-                    <option value="logs">Breakdown Log Sheet (.xlsx File)</option>
-                    <option value="quadrant">Quadrant Profiling Summary (.xlsx File)</option>
-                    <option value="json">System Data Backup (.json File)</option>
-                </select>
-                <button class="btn-excel" onclick="downloadSelectedReport()" style="padding: 6px 14px;">📥 Download File</button>
-            </div>
-        </div>
-        
         <div class="email-form-section">
             <div class="form-grid" style="grid-template-columns: 1fr;">
                 <div class="form-group">
@@ -997,8 +972,7 @@
     const logsRef = db.ref('breakdownLogs');
     const shiftEngRef = db.ref('shiftEngineers');
     const respEngRef = db.ref('respEngineers');
-
-    const logoUrl = "https://static.businessworld.in/1681206514_Gv5Utq_Delphi_TVS_Logo.png";
+    const machinesRef = db.ref('machineMaster');
 
     const rawMachineData = [
         { mcNo: "OP30052", name: "DURR 1" },
@@ -1078,7 +1052,7 @@
         { mcNo: "", name: "FQG 4" }
     ];
 
-    const machineMaster = rawMachineData.map((mc, idx) => {
+    let machineMaster = rawMachineData.map((mc, idx) => {
         const uppercaseName = mc.name.toUpperCase();
         const isCrit = uppercaseName.includes("DURR 3") || uppercaseName.includes("DURR 4") || uppercaseName.includes("VTM");
         return {
@@ -1099,9 +1073,11 @@
         populateYearDropdown();
         populateModalYearDropdown();
         populateSparesYearDropdown();
-        populateMachineDropdowns();
         populateExportBackupYearDropdown();
         
+        loadEngineerLists();
+        loadMachineList();
+
         const today = new Date().toISOString().split('T')[0];
         const copyDateElem = document.getElementById('copyFilterDate');
         if (copyDateElem) copyDateElem.value = today;
@@ -1132,18 +1108,144 @@
 
         shiftEngRef.on('value', (snapshot) => {
             const data = snapshot.val();
-            if (data) shiftEngineers = Object.values(data);
+            if (data) {
+                shiftEngineers = Object.values(data);
+                persistEngineerLists();
+            }
             populateEngineerDropdowns();
         });
 
         respEngRef.on('value', (snapshot) => {
             const data = snapshot.val();
-            if (data) respEngineers = Object.values(data);
+            if (data) {
+                respEngineers = Object.values(data);
+                persistEngineerLists();
+            }
             populateEngineerDropdowns();
+        });
+
+        machinesRef.on('value', (snapshot) => {
+            const data = snapshot.val();
+            if (data && Array.isArray(data) && data.length > 0) {
+                machineMaster = data;
+                persistMachineList();
+                populateMachineDropdowns();
+                onPeriodChange();
+            }
         });
 
         onPeriodChange();
     };
+
+    function loadEngineerLists() {
+        try {
+            const savedShift = localStorage.getItem('shiftEngineersList');
+            if (savedShift) shiftEngineers = JSON.parse(savedShift);
+
+            const savedResp = localStorage.getItem('respEngineersList');
+            if (savedResp) respEngineers = JSON.parse(savedResp);
+        } catch(e){}
+        populateEngineerDropdowns();
+    }
+
+    function persistEngineerLists() {
+        try {
+            localStorage.setItem('shiftEngineersList', JSON.stringify(shiftEngineers));
+            localStorage.setItem('respEngineersList', JSON.stringify(respEngineers));
+            shiftEngRef.set(shiftEngineers).catch(()=>{});
+            respEngRef.set(respEngineers).catch(()=>{});
+        } catch(e){}
+    }
+
+    function loadMachineList() {
+        try {
+            const savedMachines = localStorage.getItem('machineMasterList');
+            if (savedMachines) {
+                machineMaster = JSON.parse(savedMachines);
+            }
+        } catch(e){}
+        populateMachineDropdowns();
+    }
+
+    function persistMachineList() {
+        try {
+            localStorage.setItem('machineMasterList', JSON.stringify(machineMaster));
+            machinesRef.set(machineMaster).catch(()=>{});
+        } catch(e){}
+    }
+
+    function openMachineModal() {
+        populateDeleteMachineDropdown();
+        document.getElementById('machineModal').style.display = 'flex';
+    }
+
+    function closeMachineModal() {
+        document.getElementById('machineModal').style.display = 'none';
+    }
+
+    function populateDeleteMachineDropdown() {
+        const delSelect = document.getElementById('deleteMachineSelect');
+        if (!delSelect) return;
+        delSelect.innerHTML = '<option value="">-- Select Machine to Delete --</option>';
+        machineMaster.forEach(m => {
+            delSelect.innerHTML += `<option value="${m.name}">${m.name} ${m.mcNo ? '('+m.mcNo+')' : ''}</option>`;
+        });
+    }
+
+    function addNewMachine() {
+        const nameInput = document.getElementById('newMachineNameInput').value.trim().toUpperCase();
+        const noInput = document.getElementById('newMachineNoInput').value.trim();
+        const isCrit = document.getElementById('newMachineCritical').checked;
+
+        if (!nameInput) {
+            alert("Please enter a Machine Name.");
+            return;
+        }
+
+        if (machineMaster.some(m => m.name === nameInput)) {
+            alert("Machine name already exists!");
+            return;
+        }
+
+        const newMachine = {
+            id: Date.now(),
+            mcNo: noInput,
+            name: nameInput,
+            isCritical: isCrit,
+            plannedHrsPerMonth: 720
+        };
+
+        machineMaster.push(newMachine);
+        persistMachineList();
+        populateMachineDropdowns();
+        populateDeleteMachineDropdown();
+
+        document.getElementById('newMachineNameInput').value = '';
+        document.getElementById('newMachineNoInput').value = '';
+        document.getElementById('newMachineCritical').checked = false;
+
+        alert(`Machine "${nameInput}" added successfully!`);
+        onPeriodChange();
+    }
+
+    function deleteSelectedMachine() {
+        const delSelect = document.getElementById('deleteMachineSelect');
+        const selectedName = delSelect.value;
+
+        if (!selectedName) {
+            alert("Please select a machine to delete.");
+            return;
+        }
+
+        if (confirm(`Are you sure you want to delete "${selectedName}"? This machine will be removed from all matrices.`)) {
+            machineMaster = machineMaster.filter(m => m.name !== selectedName);
+            persistMachineList();
+            populateMachineDropdowns();
+            populateDeleteMachineDropdown();
+            alert(`Machine "${selectedName}" deleted.`);
+            onPeriodChange();
+        }
+    }
 
     function openExportBackupModal() {
         document.getElementById('exportBackupMonth').value = document.getElementById('selectMonth').value;
@@ -1177,9 +1279,7 @@
             const option = document.createElement('option');
             option.value = y;
             option.textContent = y;
-            if (y === currentYear) {
-                option.selected = true;
-            }
+            if (y === currentYear) option.selected = true;
             yearSelect.appendChild(option);
         }
     }
@@ -1273,10 +1373,6 @@
                             <div><strong>Shift Engineer:</strong> ${log.shiftEng || 'N/A'}</div>
                             <div><strong>PCA Responsibility:</strong> ${log.respEng || 'N/A'} (${log.pcaStatus})</div>
                         </div>
-                        ${log.immAction ? `<div style="font-size: 11px; margin-top: 4px;"><strong>Immediate Action:</strong> ${log.immAction}</div>` : ''}
-                        ${log.permAction ? `<div style="font-size: 11px; margin-top: 2px;"><strong>Permanent Action:</strong> ${log.permAction}</div>` : ''}
-                        ${log.counterMeasure ? `<div style="font-size: 11px; margin-top: 2px;"><strong>Counter Measure:</strong> ${log.counterMeasure}</div>` : ''}
-                        ${log.spares ? `<div style="font-size: 11px; margin-top: 2px;"><strong>Spares Details:</strong> ${log.spares}</div>` : ''}
                     </div>
                 `;
             });
@@ -1402,7 +1498,7 @@
             }
         });
         if (changed) {
-            try { shiftEngRef.set(shiftEngineers); respEngRef.set(respEngineers); } catch(e){}
+            persistEngineerLists();
             populateEngineerDropdowns();
         }
     }
@@ -1413,7 +1509,7 @@
             const cleanName = name.trim();
             if (!shiftEngineers.includes(cleanName)) {
                 shiftEngineers.push(cleanName);
-                try { shiftEngRef.set(shiftEngineers); } catch(e){}
+                persistEngineerLists();
                 populateEngineerDropdowns();
                 document.getElementById('inputShiftEngineer').value = cleanName;
             } else {
@@ -1432,7 +1528,7 @@
         }
         if (confirm(`Are you sure you want to delete "${selectedName}" from the Shift Engineer list?`)) {
             shiftEngineers = shiftEngineers.filter(eng => eng !== selectedName);
-            try { shiftEngRef.set(shiftEngineers); } catch(e){}
+            persistEngineerLists();
             populateEngineerDropdowns();
         }
     }
@@ -1443,7 +1539,7 @@
             const cleanName = name.trim();
             if (!respEngineers.includes(cleanName)) {
                 respEngineers.push(cleanName);
-                try { respEngRef.set(respEngineers); } catch(e){}
+                persistEngineerLists();
                 populateEngineerDropdowns();
                 document.getElementById('inputRespEngineer').value = cleanName;
             } else {
@@ -1462,7 +1558,7 @@
         }
         if (confirm(`Are you sure you want to delete "${selectedName}" from the PCA Responsibility Engineer list?`)) {
             respEngineers = respEngineers.filter(eng => eng !== selectedName);
-            try { respEngRef.set(respEngineers); } catch(e){}
+            persistEngineerLists();
             populateEngineerDropdowns();
         }
     }
@@ -1470,7 +1566,6 @@
     function populateYearDropdown() {
         const yearSelect = document.getElementById('selectYear');
         yearSelect.innerHTML = '';
-        
         const startYear = 2020;
         const endYear = 2100;
         const currentYear = new Date().getFullYear();
@@ -1479,9 +1574,7 @@
             const option = document.createElement('option');
             option.value = y;
             option.textContent = y;
-            if (y === currentYear) {
-                option.selected = true;
-            }
+            if (y === currentYear) option.selected = true;
             yearSelect.appendChild(option);
         }
     }
@@ -1498,9 +1591,7 @@
             const option = document.createElement('option');
             option.value = y;
             option.textContent = y;
-            if (y === currentYear) {
-                option.selected = true;
-            }
+            if (y === currentYear) option.selected = true;
             yearSelect.appendChild(option);
         }
     }
@@ -1517,9 +1608,7 @@
             const option = document.createElement('option');
             option.value = y;
             option.textContent = y;
-            if (y === currentYear) {
-                option.selected = true;
-            }
+            if (y === currentYear) option.selected = true;
             yearSelect.appendChild(option);
         }
     }
@@ -1739,9 +1828,7 @@
                 logsMap[log.id] = log;
             });
             logsRef.set(logsMap).catch(err => console.warn("Firebase set warning:", err));
-        } catch(e) {
-            console.error("Persist error:", e);
-        }
+        } catch(e) {}
     }
 
     function loadFromFile() {
@@ -1772,17 +1859,11 @@
         document.getElementById(tabId).classList.add('active');
         btn.classList.add('active');
 
-        if (tabId === 'trendTab') {
-            renderBreakdownTrend();
-        } else if (tabId === 'sparesTab') {
-            renderSparesTrend();
-        } else if (tabId === 'compareTab') {
-            renderMachineComparison();
-        } else if (tabId === 'quadrantTab') {
-            renderQuadrantProfiling();
-        } else if (tabId === 'copyTab') {
-            generateCopyContent();
-        }
+        if (tabId === 'trendTab') renderBreakdownTrend();
+        else if (tabId === 'sparesTab') renderSparesTrend();
+        else if (tabId === 'compareTab') renderMachineComparison();
+        else if (tabId === 'quadrantTab') renderQuadrantProfiling();
+        else if (tabId === 'copyTab') generateCopyContent();
     }
 
     function openAddModal() {
@@ -1822,7 +1903,6 @@
         const formattedDate = (dParts.length === 3) ? `${dParts[2]}.${dParts[1]}.${dParts[0]}` : dateVal;
 
         let formattedOutput = `${formattedDate}\nShift ${shiftVal}\n\n`;
-
         const filteredLogs = breakdownLogs.filter(l => l.date === dateVal && String(l.shift) === String(shiftVal));
 
         if (filteredLogs.length === 0) {
@@ -1832,10 +1912,7 @@
             filteredLogs.forEach(entry => {
                 const mc = entry.mcName || "UNKNOWN MACHINE";
                 if (!machineGroups[mc]) {
-                    machineGroups[mc] = {
-                        issues: [],
-                        totalDowntime: 0
-                    };
+                    machineGroups[mc] = { issues: [], totalDowntime: 0 };
                 }
                 const loss = Number(entry.lossTime) || 0;
                 machineGroups[mc].totalDowntime += loss;
@@ -1848,16 +1925,11 @@
             Object.keys(machineGroups).forEach((mcName, index) => {
                 const group = machineGroups[mcName];
                 formattedOutput += `${mcName}\n`;
-                
                 group.issues.forEach(item => {
                     formattedOutput += `${item.desc}\n`;
                 });
-                
                 formattedOutput += `(${group.totalDowntime} mins)\n`;
-
-                if (index < Object.keys(machineGroups).length - 1) {
-                    formattedOutput += `\n`;
-                }
+                if (index < Object.keys(machineGroups).length - 1) formattedOutput += `\n`;
             });
         }
 
@@ -2182,11 +2254,7 @@
 
         ctx.clearRect(0, 0, W, H);
 
-        const padL = 55;
-        const padR = (metricOpt === 'both') ? 55 : 25;
-        const padT = 45;
-        const padB = 40;
-
+        const padL = 55, padR = (metricOpt === 'both') ? 55 : 25, padT = 45, padB = 40;
         const chartW = W - padL - padR;
         const chartH = H - padT - padB;
 
@@ -2212,9 +2280,7 @@
             ctx.font = '10px Segoe UI, sans-serif';
             ctx.textAlign = 'right';
             const valMin = Math.round(maxMin * (1 - i / gridRows));
-            if (metricOpt !== 'occ') {
-                ctx.fillText(valMin, padL - 6, y + 3);
-            }
+            if (metricOpt !== 'occ') ctx.fillText(valMin, padL - 6, y + 3);
 
             if (metricOpt === 'both') {
                 ctx.textAlign = 'left';
@@ -2223,26 +2289,9 @@
             }
         }
 
-        ctx.textAlign = 'right';
-        ctx.font = 'bold 11px Segoe UI';
-        if (metricOpt === 'both' || metricOpt === 'min') {
-            ctx.fillStyle = '#d9534f';
-            ctx.fillRect(W - padR - 180, 10, 12, 12);
-            ctx.fillStyle = '#333';
-            ctx.fillText('BD Minutes', W - padR - 105, 20);
-        }
-        if (metricOpt === 'both' || metricOpt === 'occ') {
-            ctx.fillStyle = '#22c55e';
-            ctx.fillRect(W - padR - 80, 10, 12, 12);
-            ctx.fillStyle = '#333';
-            ctx.fillText('BD Occurrences', W - padR, 20);
-        }
-
         const stepX = chartW / daysInMonth;
-
         for (let i = 0; i < daysInMonth; i++) {
             const cx = padL + i * stepX + stepX / 2;
-            
             ctx.fillStyle = '#334155';
             ctx.font = 'bold 10px Segoe UI';
             ctx.textAlign = 'center';
@@ -2281,84 +2330,6 @@
                         ctx.fillStyle = '#15803d';
                         ctx.font = 'bold 9px Segoe UI';
                         ctx.fillText(occVal, bx + barW / 2, by - 4);
-                    }
-                }
-            }
-        }
-
-        if (typeOpt === 'line' || typeOpt === 'area') {
-            if (metricOpt === 'min' || metricOpt === 'both') {
-                ctx.beginPath();
-                for (let i = 0; i < daysInMonth; i++) {
-                    const cx = padL + i * stepX + stepX / 2;
-                    const cy = H - padB - (dailyTotalMin[i] / maxMin) * chartH;
-                    if (i === 0) ctx.moveTo(cx, cy);
-                    else ctx.lineTo(cx, cy);
-                }
-
-                if (typeOpt === 'area') {
-                    ctx.lineTo(padL + (daysInMonth - 1) * stepX + stepX / 2, H - padB);
-                    ctx.lineTo(padL + stepX / 2, H - padB);
-                    ctx.closePath();
-                    ctx.fillStyle = 'rgba(217, 83, 79, 0.25)';
-                    ctx.fill();
-                }
-
-                ctx.strokeStyle = '#d9534f';
-                ctx.lineWidth = 2.5;
-                ctx.stroke();
-
-                for (let i = 0; i < daysInMonth; i++) {
-                    const cx = padL + i * stepX + stepX / 2;
-                    const cy = H - padB - (dailyTotalMin[i] / maxMin) * chartH;
-                    ctx.beginPath();
-                    ctx.arc(cx, cy, 3.5, 0, Math.PI * 2);
-                    ctx.fillStyle = '#d9534f';
-                    ctx.fill();
-
-                    if (showLabels && dailyTotalMin[i] > 0) {
-                        ctx.fillStyle = '#c9302c';
-                        ctx.font = 'bold 9px Segoe UI';
-                        ctx.textAlign = 'center';
-                        ctx.fillText(dailyTotalMin[i], cx, cy - 6);
-                    }
-                }
-            }
-
-            if (metricOpt === 'occ' || metricOpt === 'both') {
-                ctx.beginPath();
-                for (let i = 0; i < daysInMonth; i++) {
-                    const cx = padL + i * stepX + stepX / 2;
-                    const cy = H - padB - (dailyTotalOcc[i] / maxOcc) * chartH;
-                    if (i === 0) ctx.moveTo(cx, cy);
-                    else ctx.lineTo(cx, cy);
-                }
-
-                if (typeOpt === 'area') {
-                    ctx.lineTo(padL + (daysInMonth - 1) * stepX + stepX / 2, H - padB);
-                    ctx.lineTo(padL + stepX / 2, H - padB);
-                    ctx.closePath();
-                    ctx.fillStyle = 'rgba(34, 197, 94, 0.25)';
-                    ctx.fill();
-                }
-
-                ctx.strokeStyle = '#22c55e';
-                ctx.lineWidth = 2.5;
-                ctx.stroke();
-
-                for (let i = 0; i < daysInMonth; i++) {
-                    const cx = padL + i * stepX + stepX / 2;
-                    const cy = H - padB - (dailyTotalOcc[i] / maxOcc) * chartH;
-                    ctx.beginPath();
-                    ctx.arc(cx, cy, 3.5, 0, Math.PI * 2);
-                    ctx.fillStyle = '#22c55e';
-                    ctx.fill();
-
-                    if (showLabels && dailyTotalOcc[i] > 0) {
-                        ctx.fillStyle = '#15803d';
-                        ctx.font = 'bold 9px Segoe UI';
-                        ctx.textAlign = 'center';
-                        ctx.fillText(dailyTotalOcc[i], cx, cy - 6);
                     }
                 }
             }
@@ -2480,8 +2451,6 @@
     function renderMachineComparison() {
         const fromDate = document.getElementById('compareFromDate')?.value;
         const toDate = document.getElementById('compareToDate')?.value;
-        const fromTime = document.getElementById('compareFromTime')?.value || "00:00";
-        const toTime = document.getElementById('compareToTime')?.value || "23:59";
 
         const selectedMcBoxes = document.querySelectorAll('#compareMachineCheckboxes input[type="checkbox"]:checked');
         const selectedMcs = Array.from(selectedMcBoxes).map(cb => cb.value);
@@ -2491,14 +2460,11 @@
 
         breakdownLogs.forEach(log => {
             if (!metrics[log.mcName]) return;
-            const dtStr = `${log.date}T${log.time || '08:00'}`;
-            const startStr = `${fromDate}T${fromTime}`;
-            const endStr = `${toDate}T${toTime}`;
+            if (fromDate && log.date < fromDate) return;
+            if (toDate && log.date > toDate) return;
 
-            if (dtStr >= startStr && dtStr <= endStr) {
-                metrics[log.mcName].min += Number(log.lossTime) || 0;
-                metrics[log.mcName].occ += 1;
-            }
+            metrics[log.mcName].min += Number(log.lossTime) || 0;
+            metrics[log.mcName].occ += 1;
         });
 
         const canvas = document.getElementById('compareCanvas');
@@ -2513,16 +2479,15 @@
             ctx.fillStyle = '#888';
             ctx.font = '14px Segoe UI';
             ctx.textAlign = 'center';
-            ctx.fillText('Select at least one machine to generate breakdown comparison chart.', W / 2, H / 2);
+            ctx.fillText('Select at least one machine to view comparison.', W / 2, H / 2);
             return;
         }
 
-        const padL = 60, padR = 60, padT = 30, padB = 80;
+        const padL = 60, padR = 30, padT = 30, padB = 70;
         const chartW = W - padL - padR;
         const chartH = H - padT - padB;
 
-        const maxMin = Math.max(10, ...selectedMcs.map(m => metrics[m].min)) * 1.15;
-        const maxOcc = Math.max(5, ...selectedMcs.map(m => metrics[m].occ)) * 1.15;
+        let maxMin = Math.max(10, ...selectedMcs.map(m => metrics[m].min));
 
         const gridRows = 5;
         ctx.strokeStyle = '#e2e8f0';
@@ -2534,274 +2499,129 @@
             ctx.lineTo(W - padR, y);
             ctx.stroke();
 
-            ctx.fillStyle = '#d9534f';
+            ctx.fillStyle = '#64748b';
             ctx.font = '10px Segoe UI';
             ctx.textAlign = 'right';
-            ctx.fillText((maxMin * (1 - i / gridRows) / 60).toFixed(1) + 'h', padL - 8, y + 3);
-
-            ctx.fillStyle = '#22c55e';
-            ctx.textAlign = 'left';
-            ctx.fillText(Math.round(maxOcc * (1 - i / gridRows)), W - padR + 8, y + 3);
+            ctx.fillText(Math.round(maxMin * (1 - i / gridRows)), padL - 8, y + 3);
         }
 
+        const barW = Math.min(30, (chartW / selectedMcs.length) * 0.6);
         const stepX = chartW / selectedMcs.length;
 
-        selectedMcs.forEach((mcName, idx) => {
+        selectedMcs.forEach((m, idx) => {
             const cx = padL + idx * stepX + stepX / 2;
-            const barW = Math.min(25, stepX * 0.3);
+            const bh = (metrics[m].min / maxMin) * chartH;
+            const bx = cx - barW / 2;
+            const by = H - padB - bh;
 
-            const mVal = metrics[mcName].min;
-            const bhM = (mVal / maxMin) * chartH;
-            const bxM = cx - barW;
-            const byM = H - padB - bhM;
+            ctx.fillStyle = '#1f4e78';
+            ctx.fillRect(bx, by, barW, bh);
 
-            ctx.fillStyle = '#d9534f';
-            ctx.fillRect(bxM, byM, barW, bhM);
-            if (mVal > 0) {
-                ctx.fillStyle = '#c9302c';
-                ctx.font = 'bold 9px Segoe UI';
-                ctx.textAlign = 'center';
-                ctx.fillText((mVal / 60).toFixed(1) + 'h', bxM + barW / 2, byM - 4);
-            }
-
-            const oVal = metrics[mcName].occ;
-            const bhO = (oVal / maxOcc) * chartH;
-            const bxO = cx;
-            const byO = H - padB - bhO;
-
-            ctx.fillStyle = '#22c55e';
-            ctx.fillRect(bxO, byO, barW, bhO);
-            if (oVal > 0) {
-                ctx.fillStyle = '#15803d';
-                ctx.font = 'bold 9px Segoe UI';
-                ctx.textAlign = 'center';
-                ctx.fillText(oVal, bxO + barW / 2, byO - 4);
-            }
+            ctx.fillStyle = '#000';
+            ctx.font = 'bold 10px Segoe UI';
+            ctx.textAlign = 'center';
+            ctx.fillText(`${metrics[m].min}m`, cx, by - 5);
 
             ctx.save();
             ctx.translate(cx, H - padB + 10);
             ctx.rotate(Math.PI / 6);
             ctx.fillStyle = '#334155';
-            ctx.font = '10px Segoe UI';
+            ctx.font = '11px Segoe UI';
             ctx.textAlign = 'left';
-            ctx.fillText(mcName, 0, 0);
+            ctx.fillText(m, 0, 0);
             ctx.restore();
         });
 
         const table = document.getElementById('compareMetricsTable');
         if (table) {
-            let html = '<thead><tr style="background:#8EA9DB; color:#000;"><th>Sl. No</th><th>Machine Name</th><th>Total BD Mins</th><th>Total BD Hours</th><th>BD Occurrences</th><th>MTTR (Hrs)</th></tr></thead><tbody>';
+            let html = '<thead><tr style="background:#8EA9DB; color:#000;"><th>Sl. No</th><th>Machine Name</th><th>Total Breakdown (Mins)</th><th>Total Downtime (Hrs)</th><th>Occurrences</th></tr></thead><tbody>';
             selectedMcs.forEach((m, idx) => {
                 const min = metrics[m].min;
-                const occ = metrics[m].occ;
                 const hrs = (min / 60).toFixed(2);
-                const mttr = occ > 0 ? (min / 60 / occ).toFixed(2) : "0.00";
-                html += `<tr><td>${idx + 1}</td><td style="text-align:left;"><b>${m}</b></td><td>${min}</td><td><b>${hrs}</b></td><td><b>${occ}</b></td><td>${mttr}</td></tr>`;
+                const occ = metrics[m].occ;
+                html += `<tr><td>${idx + 1}</td><td style="text-align:left;"><b>${m}</b></td><td>${min}</td><td>${hrs}</td><td>${occ}</td></tr>`;
             });
             html += '</tbody>';
             table.innerHTML = html;
         }
     }
 
-    function selectAllCompareMachines(selectState) {
+    function selectAllCompareMachines(select) {
         document.querySelectorAll('#compareMachineCheckboxes input[type="checkbox"]').forEach(cb => {
-            cb.checked = selectState;
+            cb.checked = select;
         });
         renderMachineComparison();
     }
 
-    function autoSetQuadrantThresholds() {
-        let totalOcc = 0;
-        let totalDt = 0;
-        let count = 0;
-
-        machineMaster.forEach(m => {
-            let occ = 0, dt = 0;
-            breakdownLogs.forEach(l => {
-                if (l.mcName === m.name) {
-                    occ++;
-                    dt += Number(l.lossTime) || 0;
-                }
-            });
-            if (occ > 0) {
-                totalOcc += occ;
-                totalDt += dt;
-                count++;
-            }
-        });
-
-        if (count > 0) {
-            document.getElementById('thresholdOcc').value = Math.max(1, Math.round(totalOcc / count));
-            document.getElementById('thresholdDt').value = Math.max(10, Math.round(totalDt / count));
-            renderQuadrantProfiling();
-        }
-    }
-
     function renderQuadrantProfiling() {
-        const selectedMc = document.getElementById('quadrantFilterMachine')?.value || '';
         const fromDate = document.getElementById('quadrantFromDate')?.value;
         const toDate = document.getElementById('quadrantToDate')?.value;
-        const fromTime = document.getElementById('quadrantFromTime')?.value || "00:00";
-        const toTime = document.getElementById('quadrantToTime')?.value || "23:59";
+        const selectedMc = document.getElementById('quadrantFilterMachine')?.value || "";
 
-        const threshOcc = parseInt(document.getElementById('thresholdOcc')?.value) || 2;
-        const threshDt = parseInt(document.getElementById('thresholdDt')?.value) || 30;
+        const threshOcc = parseInt(document.getElementById('thresholdOcc').value) || 2;
+        const threshDt = parseInt(document.getElementById('thresholdDt').value) || 30;
+
+        const metrics = {};
+        machineMaster.forEach(m => {
+            if (selectedMc && m.name !== selectedMc) return;
+            metrics[m.name] = { min: 0, occ: 0 };
+        });
+
+        breakdownLogs.forEach(log => {
+            if (!metrics[log.mcName]) return;
+            if (fromDate && log.date < fromDate) return;
+            if (toDate && log.date > toDate) return;
+
+            metrics[log.mcName].min += Number(log.lossTime) || 0;
+            metrics[log.mcName].occ += 1;
+        });
 
         const q1 = [], q2 = [], q3 = [], q4 = [];
 
-        machineMaster.forEach(mc => {
-            if (selectedMc && mc.name !== selectedMc) return;
-
-            let mcOcc = 0;
-            let mcDt = 0;
-
-            breakdownLogs.forEach(log => {
-                if (log.mcName === mc.name) {
-                    const dtStr = `${log.date}T${log.time || '08:00'}`;
-                    const startStr = `${fromDate}T${fromTime}`;
-                    const endStr = `${toDate}T${toTime}`;
-
-                    if (dtStr >= startStr && dtStr <= endStr) {
-                        mcOcc += 1;
-                        mcDt += Number(log.lossTime) || 0;
-                    }
-                }
-            });
-
-            const item = { name: mc.name, occ: mcOcc, dt: mcDt };
-
-            if (mcOcc >= threshOcc && mcDt >= threshDt) q1.push(item);
-            else if (mcOcc < threshOcc && mcDt >= threshDt) q2.push(item);
-            else if (mcOcc >= threshOcc && mcDt < threshDt) q3.push(item);
+        Object.keys(metrics).forEach(mcName => {
+            const item = { name: mcName, min: metrics[mcName].min, occ: metrics[mcName].occ };
+            if (item.occ >= threshOcc && item.min >= threshDt) q1.push(item);
+            else if (item.occ < threshOcc && item.min >= threshDt) q2.push(item);
+            else if (item.occ >= threshOcc && item.min < threshDt) q3.push(item);
             else q4.push(item);
         });
 
-        document.getElementById('q1Count').innerText = q1.length;
-        document.getElementById('q2Count').innerText = q2.length;
-        document.getElementById('q3Count').innerText = q3.length;
-        document.getElementById('q4Count').innerText = q4.length;
-
-        const renderList = (elementId, list) => {
-            const container = document.getElementById(elementId);
+        const renderList = (id, countId, list) => {
+            document.getElementById(countId).innerText = list.length;
+            const container = document.getElementById(id);
             if (!container) return;
             if (list.length === 0) {
-                container.innerHTML = '<div style="font-size:11px; color:#aaa; font-style:italic;">No machines in this quadrant.</div>';
-                return;
+                container.innerHTML = '<div style="font-size:11px; color:#aaa; font-style:italic;">No machines in this category.</div>';
+            } else {
+                let html = '';
+                list.forEach(m => {
+                    html += `
+                        <div class="q-item">
+                            <span><b>${m.name}</b></span>
+                            <span>${m.min} mins / ${m.occ} occ</span>
+                        </div>
+                    `;
+                });
+                container.innerHTML = html;
             }
-            let html = '';
-            list.forEach(m => {
-                html += `
-                    <div class="q-item">
-                        <span><b>${m.name}</b></span>
-                        <span>${m.occ} Occ / ${m.dt} mins</span>
-                    </div>
-                `;
-            });
-            container.innerHTML = html;
         };
 
-        renderList('q1List', q1);
-        renderList('q2List', q2);
-        renderList('q3List', q3);
-        renderList('q4List', q4);
-
-        const canvas = document.getElementById('quadrantCanvas');
-        if (!canvas) return;
-        const ctx = canvas.getContext('2d');
-        const W = canvas.width;
-        const H = canvas.height;
-
-        ctx.clearRect(0, 0, W, H);
-
-        const padL = 60, padR = 30, padT = 30, padB = 50;
-        const chartW = W - padL - padR;
-        const chartH = H - padT - padB;
-
-        let maxOcc = Math.max(threshOcc * 2, ...machineMaster.map(m => {
-            return breakdownLogs.filter(l => l.mcName === m.name).length;
-        })) + 1;
-
-        let maxDt = Math.max(threshDt * 2, ...machineMaster.map(m => {
-            return breakdownLogs.filter(l => l.mcName === m.name).reduce((a,b) => a + (Number(b.lossTime)||0), 0);
-        })) + 10;
-
-        const splitX = padL + (threshOcc / maxOcc) * chartW;
-        const splitY = H - padB - (threshDt / maxDt) * chartH;
-
-        ctx.fillStyle = '#fffaf0'; ctx.fillRect(padL, padT, splitX - padL, splitY - padT);
-        ctx.fillStyle = '#fff5f5'; ctx.fillRect(splitX, padT, W - padR - splitX, splitY - padT);
-        ctx.fillStyle = '#f5fff5'; ctx.fillRect(padL, splitY, splitX - padL, H - padB - splitY);
-        ctx.fillStyle = '#f0f8ff'; ctx.fillRect(splitX, splitY, W - padR - splitX, H - padB - splitY);
-
-        ctx.strokeStyle = '#d9534f';
-        ctx.lineWidth = 1.5;
-        ctx.setLineDash([4, 4]);
-
-        ctx.beginPath(); ctx.moveTo(splitX, padT); ctx.lineTo(splitX, H - padB); ctx.stroke();
-        ctx.beginPath(); ctx.moveTo(padL, splitY); ctx.lineTo(W - padR, splitY); ctx.stroke();
-        ctx.setLineDash([]);
-
-        ctx.strokeStyle = '#ccc';
-        ctx.strokeRect(padL, padT, chartW, chartH);
-
-        ctx.fillStyle = '#333';
-        ctx.font = 'bold 11px Segoe UI';
-        ctx.textAlign = 'center';
-        ctx.fillText('Breakdown Occurrences (Frequency)', padL + chartW / 2, H - 15);
-
-        ctx.save();
-        ctx.translate(18, padT + chartH / 2);
-        ctx.rotate(-Math.PI / 2);
-        ctx.fillText('Downtime Loss (Minutes)', 0, 0);
-        ctx.restore();
-
-        machineMaster.forEach(mc => {
-            if (selectedMc && mc.name !== selectedMc) return;
-
-            let mcOcc = 0, mcDt = 0;
-            breakdownLogs.forEach(log => {
-                if (log.mcName === mc.name) {
-                    const dtStr = `${log.date}T${log.time || '08:00'}`;
-                    const startStr = `${fromDate}T${fromTime}`;
-                    const endStr = `${toDate}T${toTime}`;
-                    if (dtStr >= startStr && dtStr <= endStr) {
-                        mcOcc += 1;
-                        mcDt += Number(log.lossTime) || 0;
-                    }
-                }
-            });
-
-            if (mcOcc === 0 && mcDt === 0) return;
-
-            const cx = padL + (mcOcc / maxOcc) * chartW;
-            const cy = H - padB - (mcDt / maxDt) * chartH;
-
-            ctx.beginPath();
-            ctx.arc(cx, cy, 6, 0, Math.PI * 2);
-            ctx.fillStyle = '#1f4e78';
-            ctx.fill();
-            ctx.strokeStyle = '#fff';
-            ctx.lineWidth = 1.5;
-            ctx.stroke();
-
-            ctx.fillStyle = '#000';
-            ctx.font = '10px Segoe UI';
-            ctx.textAlign = 'left';
-            ctx.fillText(mc.name, cx + 8, cy + 3);
-        });
+        renderList('q1List', 'q1Count', q1);
+        renderList('q2List', 'q2Count', q2);
+        renderList('q3List', 'q3Count', q3);
+        renderList('q4List', 'q4Count', q4);
     }
 
-    function exportBreakdownLogExcel() { alert("Exporting Breakdown Logs Excel..."); }
-    function exportAvailabilityExcel() { alert("Exporting Availability Matrix Excel..."); }
-    function exportBreakdownTrendExcel() { alert("Exporting Breakdown Trend Excel..."); }
-    function exportMachineComparisonExcel() { alert("Exporting Machine Comparison Excel..."); }
-    function exportQuadrantProfilingExcel() { alert("Exporting Quadrant Profiling Excel..."); }
-    function downloadSelectedReport() { alert("Downloading selected report file..."); }
     function sendEmailViaWebGmail() {
-        const toInputs = document.querySelectorAll('.emailToInput');
-        const recipients = Array.from(toInputs).map(i => i.value).filter(v => v).join(',');
+        const emailTo = Array.from(document.querySelectorAll('.emailToInput')).map(i => i.value.trim()).filter(Boolean).join(',');
+        const emailCc = Array.from(document.querySelectorAll('.emailCcInput')).map(i => i.value.trim()).filter(Boolean).join(',');
         const subject = encodeURIComponent(document.getElementById('emailSubject').value);
-        window.open(`https://mail.google.com/mail/?view=cm&fs=1&to=${recipients}&su=${subject}`, '_blank');
+
+        const kpi = getKpiMetrics();
+        const bodyText = `Hi Team,\n\nPlease find the summary status breakdown report below:\n\n- Overall Availability: ${kpi.overallAvail}%\n- Critical Machines Availability: ${kpi.critAvail}%\n- Total Downtime: ${kpi.overallBdHrs} Hrs\n- Total Occurrences: ${kpi.totalBdOcc}\n\nBest Regards,\nEquipment Maintenance Team`;
+
+        const mailUrl = `https://mail.google.com/mail/?view=cm&fs=1&to=${encodeURIComponent(emailTo)}&cc=${encodeURIComponent(emailCc)}&su=${subject}&body=${encodeURIComponent(bodyText)}`;
+        window.open(mailUrl, '_blank');
     }
 </script>
 </body>
