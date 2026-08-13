@@ -1,1 +1,2973 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Equipment Breakdown & Availability Management System</title>
 
+    <!-- ExcelJS & FileSaver -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/exceljs/4.3.0/exceljs.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.5/FileSaver.min.js"></script>
+
+    <!-- Firebase Compatibility Libraries -->
+    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
+
+    <style>
+        :root {
+            --primary-blue: #1f4e78;
+            --excel-green: #107c41;
+            --border-gray: #d9d9d9;
+            --bg-light: #f4f7f6;
+        }
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            margin: 0;
+            padding: 15px;
+            background-color: var(--bg-light);
+            color: #333;
+            font-size: 13px;
+        }
+        .container { max-width: 100%; margin: 0 auto; }
+        .top-bar {
+            background: #fff;
+            padding: 15px 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 15px;
+            margin-bottom: 15px;
+        }
+        h2 { margin: 0; color: var(--primary-blue); font-size: 20px; }
+        .controls { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+        select, input, button, textarea {
+            padding: 6px 10px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            font-size: 12px;
+        }
+        button { cursor: pointer; font-weight: bold; transition: all 0.2s; }
+        .btn-primary { background-color: var(--primary-blue); color: #fff; border: none; }
+        .btn-primary:hover { background-color: #153450; }
+        .btn-excel { background-color: var(--excel-green); color: #fff; border: none; }
+        .btn-excel:hover { background-color: #0b5a2f; }
+        .btn-save { background-color: #d97706; color: #fff; border: none; }
+        .btn-save:hover { background-color: #b45309; }
+        .btn-email { background-color: #ea4335; color: #fff; border: none; }
+        .btn-email:hover { background-color: #c5221f; }
+        .btn-danger { background-color: #d9534f; color: #fff; border: none; padding: 4px 8px; border-radius: 3px; }
+        .btn-danger:hover { background-color: #c9302c; }
+
+        .nav-tabs { display: flex; gap: 4px; border-bottom: 2px solid #ccc; margin-bottom: 15px; flex-wrap: wrap; }
+        .tab-btn {
+            padding: 10px 18px;
+            background: #e2e8f0;
+            border: none;
+            border-radius: 6px 6px 0 0;
+            font-weight: bold;
+            color: #4a5568;
+            cursor: pointer;
+        }
+        .tab-btn.active {
+            background: #fff;
+            color: var(--primary-blue);
+            border-top: 3px solid var(--primary-blue);
+        }
+        .tab-content { display: none; background: #fff; padding: 15px; border-radius: 0 0 8px 8px; box-shadow: 0 2px 5px rgba(0,0,0,0.1); }
+        .tab-content.active { display: block; }
+
+        .table-wrap { overflow-x: auto; max-height: 650px; }
+        table { border-collapse: collapse; width: 100%; font-size: 11px; text-align: center; }
+        th, td { border: 1px solid var(--border-gray); padding: 5px; white-space: nowrap; }
+        th { background-color: #f2f2f2; position: sticky; top: 0; z-index: 2; font-weight: bold; }
+        .vertical-date {
+            writing-mode: vertical-rl;
+            transform: rotate(180deg);
+            padding: 8px 2px;
+            height: 75px;
+        }
+
+        .bg-green { background-color: #92D050 !important; font-weight: bold; }
+        .bg-yellow { background-color: #FFFF00 !important; font-weight: bold; }
+        .bg-blue { background-color: #00B0F0 !important; color: white; font-weight: bold; }
+        .bg-orange { background-color: #F8CBAD !important; font-weight: bold; }
+        .bg-red { background-color: #FFC7CE !important; color: #9C0006; font-weight: bold; }
+
+        .modal {
+            display: none; position: fixed; z-index: 100; left: 0; top: 0;
+            width: 100%; height: 100%; background-color: rgba(0,0,0,0.5);
+            justify-content: center; align-items: center;
+        }
+        .modal-content {
+            background: #fff; border-radius: 8px; width: 90%; max-width: 850px;
+            max-height: 90vh; overflow-y: auto; padding: 20px; box-shadow: 0 4px 10px rgba(0,0,0,0.3);
+        }
+        .form-grid {
+            display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 12px; margin-top: 15px;
+        }
+        .form-group { display: flex; flex-direction: column; gap: 4px; text-align: left; }
+        .form-group label { font-weight: bold; font-size: 11px; color: #444; }
+
+        .kpi-table { width: 420px; margin-top: 20px; font-size: 12px; }
+        .kpi-table td { padding: 6px 12px; }
+        .filter-bar { display: flex; gap: 12px; margin-bottom: 12px; align-items: center; background: #f8f9fa; padding: 10px; border-radius: 6px; flex-wrap: wrap; }
+
+        .doc-header-table { width: 100%; margin-bottom: 15px; font-size: 11px; border-collapse: collapse; }
+        .doc-header-table td, .doc-header-table th { border: 1px solid #000; padding: 4px 8px; text-align: center; }
+        .doc-header-title { font-size: 16px; font-weight: bold; letter-spacing: 1px; }
+        .logo-cell { display: flex; align-items: center; justify-content: center; padding: 4px; }
+        .logo-cell img { height: 50px; width: auto; object-fit: contain; }
+        .trend-canvas-container { overflow-x: auto; margin-bottom: 15px; background: #fff; border: 1px solid #000; padding: 10px; }
+        
+        .compare-checkbox-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(210px, 1fr));
+            gap: 6px;
+            width: 100%;
+            max-height: 160px;
+            overflow-y: auto;
+            border: 1px solid #ccc;
+            padding: 10px;
+            background: #fff;
+            border-radius: 4px;
+        }
+        .compare-checkbox-item {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            font-size: 11px;
+            cursor: pointer;
+        }
+        .compare-checkbox-item input { margin: 0; cursor: pointer; }
+
+        .quadrant-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 15px;
+            margin-top: 15px;
+        }
+        .quadrant-card {
+            border: 2px solid #ccc;
+            border-radius: 8px;
+            padding: 12px;
+            background: #fff;
+            min-height: 200px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+        }
+        .q1-card { border-color: #d9534f; background-color: #fff5f5; }
+        .q2-card { border-color: #f0ad4e; background-color: #fffaf0; }
+        .q3-card { border-color: #337ab7; background-color: #f0f8ff; }
+        .q4-card { border-color: #5cb85c; background-color: #f5fff5; }
+        
+        .q-title {
+            font-weight: bold;
+            font-size: 13px;
+            margin-bottom: 8px;
+            padding-bottom: 4px;
+            border-bottom: 2px solid rgba(0,0,0,0.1);
+            display: flex;
+            justify-content: space-between;
+        }
+        .q1-card .q-title { color: #c9302c; }
+        .q2-card .q-title { color: #ec971f; }
+        .q3-card .q-title { color: #286090; }
+        .q4-card .q-title { color: #449d44; }
+
+        .q-item-list {
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+            max-height: 250px;
+            overflow-y: auto;
+        }
+        .q-item {
+            background: #fff;
+            border: 1px solid #ddd;
+            padding: 6px 10px;
+            border-radius: 4px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-size: 11px;
+        }
+
+        .email-form-section {
+            border: 1px solid #ddd;
+            padding: 12px;
+            border-radius: 6px;
+            background: #fdfdfd;
+            margin-top: 10px;
+        }
+        .checkbox-group {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            margin-top: 6px;
+        }
+        .checkbox-label {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-weight: normal;
+            cursor: pointer;
+        }
+        .report-item-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 4px 0;
+            border-bottom: 1px dashed #eee;
+        }
+        
+        .copy-preview-box {
+            width: 100%;
+            height: 220px;
+            margin-top: 10px;
+            font-family: monospace;
+            font-size: 12px;
+            background: #f9f9f9;
+            border: 1px solid #ccc;
+            padding: 10px;
+            box-sizing: border-box;
+            white-space: pre-wrap;
+        }
+        .sync-status {
+            font-weight: bold;
+            font-size: 11px;
+            padding: 4px 8px;
+            border-radius: 4px;
+            background: #e2e8f0;
+            color: #1f4e78;
+        }
+        
+        .clickable-occ {
+            cursor: pointer;
+            text-decoration: underline;
+            font-weight: bold;
+            transition: background-color 0.2s;
+        }
+        .clickable-occ:hover {
+            background-color: #a3e635 !important;
+        }
+        
+        .dynamic-email-row {
+            display: flex;
+            gap: 5px;
+            margin-bottom: 5px;
+            align-items: center;
+        }
+        .badge {
+            background: #333;
+            color: #fff;
+            padding: 2px 6px;
+            border-radius: 10px;
+            font-size: 11px;
+        }
+
+        /* Backup Option Modal Radio Box Styles */
+        .export-option-box {
+            border: 1px solid #ccc;
+            border-radius: 6px;
+            padding: 12px;
+            margin-bottom: 12px;
+            cursor: pointer;
+            transition: border-color 0.2s, background-color 0.2s;
+            display: flex;
+            align-items: flex-start;
+            gap: 10px;
+        }
+        .export-option-box:hover {
+            border-color: var(--primary-blue);
+            background-color: #f0f4f8;
+        }
+        .export-option-box input[type="radio"] {
+            margin-top: 3px;
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <div class="top-bar">
+        <h2>Breakdown & Availability Management System</h2>
+        <div class="controls">
+            <span id="syncStatus" class="sync-status">🔄 Connecting...</span>
+
+            <label><b>Month:</b></label>
+            <select id="selectMonth" onchange="onPeriodChange()">
+                <option value="0">January</option>
+                <option value="1">February</option>
+                <option value="2">March</option>
+                <option value="3">April</option>
+                <option value="4">May</option>
+                <option value="5">June</option>
+                <option value="6">July</option>
+                <option value="7" selected>August</option>
+                <option value="8">September</option>
+                <option value="9">October</option>
+                <option value="10">November</option>
+                <option value="11">December</option>
+            </select>
+
+            <label><b>Year:</b></label>
+            <select id="selectYear" onchange="onPeriodChange()"></select>
+
+            <button class="btn-email" onclick="openEmailModal()">✉️ Send Email Report</button>
+            <button class="btn-save" onclick="openExportBackupModal()">📁 Export Backup (.json)</button>
+            <button class="btn-save" onclick="loadFromFile()">📂 Load Backup (.json)</button>
+            <button class="btn-excel" onclick="exportBreakdownLogExcel()">Export Breakdown (.xlsx)</button>
+            <button class="btn-excel" onclick="exportAvailabilityExcel()">Export Availability (.xlsx)</button>
+            <button class="btn-excel" onclick="exportBreakdownTrendExcel()">Export Trend (.xlsx)</button>
+        </div>
+    </div>
+
+    <div class="nav-tabs">
+        <button class="tab-btn active" onclick="switchTab('breakdownTab', this)">Breakdown Log Sheet</button>
+        <button class="tab-btn" onclick="switchTab('copyTab', this)">📋 Copy Feature</button>
+        <button class="tab-btn" onclick="switchTab('availabilityTab', this)">Availability Matrix & KPI Report</button>
+        <button class="tab-btn" onclick="switchTab('trendTab', this)">Breakdown Trend Sheet</button>
+        <button class="tab-btn" onclick="switchTab('sparesTab', this)">⚙️ Spares Analysis</button>
+        <button class="tab-btn" onclick="switchTab('compareTab', this)">Machine Comparison</button>
+        <button class="tab-btn" onclick="switchTab('quadrantTab', this)">Quadrant Profiling</button>
+    </div>
+
+    <!-- TAB 1: Breakdown Log Sheet -->
+    <div id="breakdownTab" class="tab-content active">
+        <div class="filter-bar">
+            <b>Filter Logs:</b>
+            <input type="text" id="filterSearch" placeholder="Search machine, issue, engineer..." onkeyup="renderBreakdownLogTable()">
+            <select id="filterMachine" onchange="renderBreakdownLogTable()">
+                <option value="">All Machines</option>
+            </select>
+            <select id="filterShift" onchange="renderBreakdownLogTable()">
+                <option value="">All Shifts</option>
+                <option value="1">Shift 1</option>
+                <option value="2">Shift 2</option>
+                <option value="3">Shift 3</option>
+            </select>
+            <button class="btn-primary" onclick="clearFilters()">Reset Filters</button>
+            <button class="btn-primary" onclick="openAddModal()">+ Add Breakdown Entry</button>
+        </div>
+
+        <div class="table-wrap">
+            <table id="breakdownLogTable">
+                <thead>
+                    <tr style="background-color: #8ea9db; color: #000;">
+                        <th>Sl.No</th>
+                        <th>Date</th>
+                        <th>Shift (1,2,3)</th>
+                        <th>Total Operating Time in min</th>
+                        <th>Machine Name</th>
+                        <th>Machine Number</th>
+                        <th>Nature of Issue (Customer Voice) Alarm Display</th>
+                        <th>Type of issue (M/E)</th>
+                        <th>Breakdown Loss time in mins</th>
+                        <th>Status (STOP/RUN)</th>
+                        <th>Immediate Corrective Action</th>
+                        <th>Permanent Corrective Action *</th>
+                        <th>Counter Measure</th>
+                        <th>Machine Availability</th>
+                        <th>Shift Engineer Name</th>
+                        <th>Spares Consumed details</th>
+                        <th>PCA Responsibility Engineer Name</th>
+                        <th>PCA Status</th>
+                        <th>Action</th>
+                    </tr>
+                </thead>
+                <tbody id="breakdownLogTableBody"></tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- TAB 1.5: Copy Feature Tab -->
+    <div id="copyTab" class="tab-content">
+        <h3 style="color: var(--primary-blue); margin-top: 0;">Copy Breakdown Summary</h3>
+        <div class="filter-bar">
+            <label><b>Select Date:</b></label>
+            <input type="date" id="copyFilterDate" onchange="generateCopyContent()">
+            
+            <label style="margin-left: 15px;"><b>Select Shift:</b></label>
+            <select id="copyFilterShift" onchange="generateCopyContent()">
+                <option value="1">Shift 1</option>
+                <option value="2">Shift 2</option>
+                <option value="3">Shift 3</option>
+            </select>
+        </div>
+
+        <div style="margin-top: 15px;">
+            <label><b>Shift Description / General Notes:</b></label>
+            <textarea id="copyDescription" rows="3" style="width: 100%; margin-top: 5px;" placeholder="Type shift description or additional details here..." oninput="generateCopyContent()"></textarea>
+        </div>
+
+        <div style="margin-top: 15px;">
+            <label><b>Formatted Preview Output:</b></label>
+            <textarea id="copyPreviewArea" class="copy-preview-box" readonly></textarea>
+        </div>
+
+        <div style="margin-top: 15px; text-align: right;">
+            <button class="btn-primary" style="padding: 8px 16px; font-size: 13px;" onclick="copyToClipboard()">📋 Copy Output to Clipboard</button>
+        </div>
+    </div>
+
+    <!-- TAB 2: Availability Matrix & KPI Report -->
+    <div id="availabilityTab" class="tab-content">
+        <div style="margin-bottom: 8px; font-size: 11px; color: #555;">
+            ℹ️ <b>Hint:</b> Click on any breakdown occurrence number (e.g. <b>2</b>) in the table to open a floating pop-up displaying the Nature of Issues.
+        </div>
+        <div class="table-wrap">
+            <table id="availabilityMatrixTable"></table>
+        </div>
+        <div style="margin-top:20px;">
+            <h3 style="color:var(--primary-blue); margin-bottom:8px;">Summary Metrics (KPI)</h3>
+            <table class="kpi-table" id="kpiSummaryTable"></table>
+        </div>
+    </div>
+
+    <!-- TAB 3: Breakdown Trend Sheet -->
+    <div id="trendTab" class="tab-content">
+        <div style="display: flex; justify-content: space-between; align-items: center; background: #eef2f7; padding: 10px 14px; border-radius: 6px; border: 1px solid #b8cce4; margin-bottom: 12px;">
+            <span style="font-weight: bold; font-size: 14px; color: var(--primary-blue);">📊 Breakdown Trend Sheet & Report Analysis</span>
+            <button class="btn-excel" onclick="exportBreakdownTrendExcel()" style="padding: 8px 16px; font-size: 13px; display: flex; align-items: center; gap: 6px;">
+                📥 Download Breakdown Trend Sheet (.xlsx)
+            </button>
+        </div>
+
+        <table class="doc-header-table">
+            <tr>
+                <td style="width: 30%; vertical-align: middle; padding: 6px;">
+                    <div class="logo-cell">
+                        <img src="https://static.businessworld.in/1681206514_Gv5Utq_Delphi_TVS_Logo.png" alt="Delphi - TVS Logo">
+                    </div>
+                </td>
+                <td class="doc-header-title" style="width: 45%;">BREAKDOWN TREND</td>
+                <td style="width: 25%; text-align: left; font-size: 10px;">
+                    <b>Format No:</b> F/TQM/DWM VCS 25<br>
+                    <b>Rev No & Date:</b> 03 / 30.12.24
+                </td>
+            </tr>
+            <tr>
+                <td style="text-align: left;"><b>Plant:</b> CR - Oragadam</td>
+                <td rowspan="2"></td>
+                <td style="text-align: left; font-size: 10px;">
+                    <b>Month & Year:</b> <span id="trendMonthYearText">Aug-26</span>
+                </td>
+            </tr>
+            <tr>
+                <td style="text-align: left;"><b>APU / Section:</b> INJECTOR</td>
+                <td style="text-align: left; font-size: 10px;"><b>Cell / Line:</b> IAT</td>
+            </tr>
+        </table>
+
+        <div class="filter-bar" style="background:#eef2f7; border:1px solid #b8cce4; margin-bottom:12px;">
+            <b>📊 Advanced Web Chart Customization:</b>
+            <label style="margin-left:8px;"><b>Metric:</b></label>
+            <select id="trendChartMetric" onchange="renderBreakdownTrend()">
+                <option value="min">Total Breakdown Minutes</option>
+                <option value="occ">Total Breakdown Occurrences</option>
+                <option value="both" selected>Dual View (Minutes & Occurrences)</option>
+            </select>
+
+            <label style="margin-left:8px;"><b>Chart Style:</b></label>
+            <select id="trendChartType" onchange="renderBreakdownTrend()">
+                <option value="bar" selected>Bar Chart</option>
+                <option value="line">Line Chart</option>
+                <option value="area">Filled Area Chart</option>
+            </select>
+
+            <label style="margin-left:8px;"><b>Equipment Filter:</b></label>
+            <select id="trendChartMachine" onchange="renderBreakdownTrend()">
+                <option value="">All Equipment (Total Trend)</option>
+            </select>
+
+            <label style="margin-left:8px; cursor:pointer;" class="checkbox-label">
+                <input type="checkbox" id="trendShowLabels" checked onchange="renderBreakdownTrend()">
+                <span>Show Data Labels</span>
+            </label>
+        </div>
+
+        <div class="trend-canvas-container">
+            <canvas id="trendCanvas" width="1250" height="340"></canvas>
+        </div>
+
+        <div class="table-wrap" style="margin-bottom: 20px;">
+            <table id="trendTotalTable"></table>
+        </div>
+
+        <h4 style="margin: 10px 0 5px 0; color: var(--primary-blue);">Machine Breakdown Occurrences</h4>
+        <div class="table-wrap">
+            <table id="trendMachineTable"></table>
+        </div>
+    </div>
+
+    <!-- TAB 3.5: Spares Analysis -->
+    <div id="sparesTab" class="tab-content">
+        <div class="filter-bar">
+            <b>Spare Consumption Trend Controls:</b>
+            
+            <label style="margin-left: 10px;"><b>Month:</b></label>
+            <select id="sparesMonthSelect" onchange="renderSparesTrend()">
+                <option value="all">All Months</option>
+                <option value="0">January</option>
+                <option value="1">February</option>
+                <option value="2">March</option>
+                <option value="3">April</option>
+                <option value="4">May</option>
+                <option value="5">June</option>
+                <option value="6">July</option>
+                <option value="7">August</option>
+                <option value="8">September</option>
+                <option value="9">October</option>
+                <option value="10">November</option>
+                <option value="11">December</option>
+            </select>
+
+            <label style="margin-left: 10px;"><b>Year:</b></label>
+            <select id="sparesYearSelect" onchange="renderSparesTrend()"></select>
+
+            <label style="margin-left: 10px;"><b>Y-Axis Count Limit:</b></label>
+            <select id="sparesYMaxSelect" onchange="renderSparesTrend()">
+                <option value="auto">Auto Adjust</option>
+                <option value="10" selected>10 Counts</option>
+                <option value="20">20 Counts</option>
+                <option value="50">50 Counts</option>
+                <option value="100">100 Counts</option>
+            </select>
+            <button class="btn-primary" onclick="renderSparesTrend()">🔄 Refresh Chart</button>
+        </div>
+
+        <div class="trend-canvas-container" style="margin-top:10px;">
+            <canvas id="sparesCanvas" width="1200" height="360"></canvas>
+        </div>
+
+        <div class="table-wrap" style="margin-top: 15px;">
+            <h4 style="margin: 0 0 10px 0; color: var(--primary-blue);">Spares Consumption Frequency Table</h4>
+            <table id="sparesFrequencyTable"></table>
+        </div>
+    </div>
+
+    <!-- TAB 4: Machine Comparison -->
+    <div id="compareTab" class="tab-content">
+        <div class="filter-bar" style="flex-direction: column; align-items: flex-start; gap:12px;">
+            <div style="display:flex; justify-content:space-between; width:100%; align-items:center; flex-wrap:wrap; gap:10px;">
+                <b style="font-size:13px; color:var(--primary-blue);">Date & Time Filter Range:</b>
+                <div style="display:flex; gap:8px; align-items:center; flex-wrap:wrap;">
+                    <label><b>From Date:</b></label>
+                    <input type="date" id="compareFromDate" onchange="renderMachineComparison()">
+                    <label><b>Time:</b></label>
+                    <input type="time" id="compareFromTime" value="00:00" onchange="renderMachineComparison()">
+
+                    <label style="margin-left:8px;"><b>To Date:</b></label>
+                    <input type="date" id="compareToDate" onchange="renderMachineComparison()">
+                    <label><b>Time:</b></label>
+                    <input type="time" id="compareToTime" value="23:59" onchange="renderMachineComparison()">
+
+                    <button class="btn-excel" style="margin-left:8px;" onclick="exportMachineComparisonExcel()">Export Comparison (.xlsx)</button>
+                </div>
+            </div>
+
+            <div style="display:flex; justify-content:space-between; width:100%; align-items:center; flex-wrap:wrap; gap:10px; margin-top:5px; border-top:1px solid #ddd; padding-top:10px;">
+                <b style="font-size:13px; color:var(--primary-blue);">Select Machines to Compare:</b>
+                <div style="display:flex; gap:8px;">
+                    <button class="btn-primary" onclick="selectAllCompareMachines(true)">Select All Machines</button>
+                    <button class="btn-primary" style="background:#6c757d;" onclick="selectAllCompareMachines(false)">Clear All</button>
+                    <button class="btn-excel" onclick="renderMachineComparison()">Update Comparison Chart</button>
+                </div>
+            </div>
+            <div id="compareMachineCheckboxes" class="compare-checkbox-grid"></div>
+        </div>
+
+        <div style="margin-top:15px; background:#fff; padding:15px; border:1px solid var(--border-gray); border-radius:6px;">
+            <h4 style="margin:0 0 10px 0; color:var(--primary-blue);">Machine Breakdown Hours & Occurrences Comparison</h4>
+            <div class="trend-canvas-container" style="border:none; padding:0;">
+                <canvas id="compareCanvas" width="1200" height="320"></canvas>
+            </div>
+        </div>
+
+        <div style="margin-top:20px;" class="table-wrap">
+            <h4 style="margin:0 0 10px 0; color:var(--primary-blue);">Comparative Machine Metrics Matrix</h4>
+            <table id="compareMetricsTable"></table>
+        </div>
+    </div>
+
+    <!-- TAB 5: Quadrant Profiling -->
+    <div id="quadrantTab" class="tab-content">
+        <div class="filter-bar">
+            <b>Filter Profiling:</b>
+            <select id="quadrantFilterMachine" onchange="renderQuadrantProfiling()">
+                <option value="">All Machines</option>
+            </select>
+            
+            <label style="margin-left:8px;"><b>From Date:</b></label>
+            <input type="date" id="quadrantFromDate" onchange="renderQuadrantProfiling()">
+            <label><b>Time:</b></label>
+            <input type="time" id="quadrantFromTime" value="00:00" onchange="renderQuadrantProfiling()">
+
+            <label style="margin-left:8px;"><b>To Date:</b></label>
+            <input type="date" id="quadrantToDate" onchange="renderQuadrantProfiling()">
+            <label><b>Time:</b></label>
+            <input type="time" id="quadrantToTime" value="23:59" onchange="renderQuadrantProfiling()">
+
+            <label style="margin-left:8px;"><b>Occ. Thresh:</b></label>
+            <input type="number" id="thresholdOcc" value="2" min="1" style="width:50px;" onchange="renderQuadrantProfiling()">
+
+            <label style="margin-left:8px;"><b>DT Thresh (Mins):</b></label>
+            <input type="number" id="thresholdDt" value="30" min="1" style="width:60px;" onchange="renderQuadrantProfiling()">
+
+            <button class="btn-primary" onclick="autoSetQuadrantThresholds()">Auto-Set Averages</button>
+            <button class="btn-excel" onclick="exportQuadrantProfilingExcel()">Export Quadrant (.xlsx)</button>
+        </div>
+
+        <div class="trend-canvas-container" style="margin-top:10px;">
+            <canvas id="quadrantCanvas" width="1100" height="380"></canvas>
+        </div>
+
+        <div class="quadrant-grid">
+            <div class="quadrant-card q2-card">
+                <div class="q-title">
+                    <span>Quadrant 2: Low Occurrences, High Downtime</span>
+                    <span id="q2Count" class="badge">0</span>
+                </div>
+                <div style="font-size:10px; color:#666; margin-bottom:8px;">Major/Chronic Breakdowns (High Restoration Time)</div>
+                <div id="q2List" class="q-item-list"></div>
+            </div>
+
+            <div class="quadrant-card q1-card">
+                <div class="q-title">
+                    <span>Quadrant 1: High Occurrences, High Downtime</span>
+                    <span id="q1Count" class="badge">0</span>
+                </div>
+                <div style="font-size:10px; color:#666; margin-bottom:8px;">Critical Focus Area (Worst Performers)</div>
+                <div id="q1List" class="q-item-list"></div>
+            </div>
+
+            <div class="quadrant-card q4-card">
+                <div class="q-title">
+                    <span>Quadrant 4: Low Occurrences, Low Downtime</span>
+                    <span id="q4Count" class="badge">0</span>
+                </div>
+                <div style="font-size:10px; color:#666; margin-bottom:8px;">Normal / Low Risk Equipment</div>
+                <div id="q4List" class="q-item-list"></div>
+            </div>
+
+            <div class="quadrant-card q3-card">
+                <div class="q-title">
+                    <span>Quadrant 3: High Occurrences, Low Downtime</span>
+                    <span id="q3Count" class="badge">0</span>
+                </div>
+                <div style="font-size:10px; color:#666; margin-bottom:8px;">Frequent Minor Stops / Nuisance Issues</div>
+                <div id="q3List" class="q-item-list"></div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- MODAL: Entry Form -->
+<div id="entryModal" class="modal">
+    <div class="modal-content">
+        <h3 style="margin-top:0; color:var(--primary-blue);">Add Breakdown Log Entry</h3>
+        <div class="form-grid">
+            <div class="form-group">
+                <label>Date *</label>
+                <input type="date" id="inputDate">
+            </div>
+            <div class="form-group">
+                <label>Time *</label>
+                <input type="time" id="inputTime" value="08:00">
+            </div>
+            <div class="form-group">
+                <label>Shift (1, 2, 3) *</label>
+                <select id="inputShift">
+                    <option value="1">1</option>
+                    <option value="2">2</option>
+                    <option value="3">3</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label>Total Operating Time (mins) *</label>
+                <input type="number" id="inputOpTime" value="480">
+            </div>
+            <div class="form-group">
+                <label>Machine Selection *</label>
+                <select id="inputMachineSelect"></select>
+            </div>
+            <div class="form-group">
+                <label>Nature of Issue / Alarm Display</label>
+                <input type="text" id="inputIssue" placeholder="e.g. Sensor Fault">
+            </div>
+            <div class="form-group">
+                <label>Type of Issue</label>
+                <select id="inputTypeIssue">
+                    <option value="M">Mechanical (M)</option>
+                    <option value="E">Electrical (E)</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label>Breakdown Loss Time (mins) *</label>
+                <input type="number" id="inputLossTime" value="0" placeholder="e.g. 34">
+            </div>
+            <div class="form-group">
+                <label>Status</label>
+                <select id="inputStatus">
+                    <option value="RUN">RUN</option>
+                    <option value="STOP">STOP</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label>Immediate Corrective Action</label>
+                <input type="text" id="inputImmediateAction">
+            </div>
+            <div class="form-group">
+                <label>Permanent Corrective Action</label>
+                <input type="text" id="inputPermanentAction">
+            </div>
+            <div class="form-group">
+                <label>Counter Measure</label>
+                <input type="text" id="inputCounterMeasure">
+            </div>
+            <div class="form-group">
+                <label>Shift Engineer Name</label>
+                <div style="display: flex; gap: 5px;">
+                    <select id="inputShiftEngineer" style="flex: 1;"></select>
+                    <button type="button" class="btn-primary" onclick="addShiftEngineer()" title="Add New Shift Engineer" style="padding: 4px 10px; font-weight: bold; font-size: 14px;">+</button>
+                    <button type="button" class="btn-danger" onclick="deleteShiftEngineer()" title="Delete Selected Shift Engineer" style="padding: 4px 8px; font-weight: bold; font-size: 12px;">-</button>
+                </div>
+            </div>
+
+            <div class="form-group" style="grid-column: span 2;">
+                <label>Spares Consumed Details</label>
+                <div style="display: flex; gap: 5px; align-items: center; margin-bottom: 5px;">
+                    <input type="text" id="inputSpares" placeholder="e.g. Sensor (Qty: 1)" readonly style="flex:1; background-color: #f9f9f9;">
+                    <button type="button" class="btn-primary" onclick="showSpareSelectModal()" title="Select or Add Spare Item" style="padding: 4px 10px; font-weight: bold; font-size: 14px;">+</button>
+                    <button type="button" class="btn-danger" onclick="clearAllSpares()" title="Clear All Spares" style="padding: 4px 8px; font-weight: bold; font-size: 12px;">Clear</button>
+                </div>
+                <div id="sparesChipsContainer" style="display: flex; flex-wrap: wrap; gap: 6px; min-height: 28px; border: 1px solid #ccc; padding: 6px; border-radius: 4px; background: #fff;">
+                    <span style="color:#aaa; font-size:11px; font-style:italic;">No spares added yet. Click '+' to add spares with quantities.</span>
+                </div>
+            </div>
+
+            <div class="form-group">
+                <label>PCA Responsibility Engineer Name</label>
+                <div style="display: flex; gap: 5px;">
+                    <select id="inputRespEngineer" style="flex: 1;"></select>
+                    <button type="button" class="btn-primary" onclick="addRespEngineer()" title="Add New PCA Responsibility Engineer" style="padding: 4px 10px; font-weight: bold; font-size: 14px;">+</button>
+                    <button type="button" class="btn-danger" onclick="deleteRespEngineer()" title="Delete Selected PCA Engineer" style="padding: 4px 8px; font-weight: bold; font-size: 12px;">-</button>
+                </div>
+            </div>
+            <div class="form-group">
+                <label>PCA Status</label>
+                <select id="inputPcaStatus">
+                    <option value="Inprogress">Inprogress</option>
+                    <option value="Action">Action</option>
+                    <option value="Completed">Completed</option>
+                </select>
+            </div>
+        </div>
+
+        <div style="margin-top:20px; text-align:right; display:flex; gap:10px; justify-content:flex-end;">
+            <button style="background:#6c757d; color:#fff;" onclick="closeAddModal()">Cancel</button>
+            <button class="btn-primary" onclick="saveBreakdownEntry()">Save Entry</button>
+        </div>
+    </div>
+</div>
+
+<!-- MODAL: Export Backup Options Pop-up -->
+<div id="exportBackupModal" class="modal">
+    <div class="modal-content" style="max-width: 500px;">
+        <h3 style="margin-top:0; color:var(--primary-blue); border-bottom:1px solid #ccc; padding-bottom:8px;">
+            📁 Export System Backup (.json)
+        </h3>
+        <p style="font-size:12px; color:#555;">Choose your preferred backup export filter scope below:</p>
+
+        <label class="export-option-box">
+            <input type="radio" name="exportScope" value="selected" checked onchange="toggleExportScopeSelects()">
+            <div>
+                <strong style="color:var(--primary-blue);">1. Export Selected Month & Year Data Only</strong>
+                <div style="font-size:11px; color:#666; margin-top:3px;">Downloads data filtered strictly for the chosen month and year below.</div>
+                
+                <div id="exportMonthYearGroup" style="display: flex; gap: 10px; margin-top: 8px; align-items: center;">
+                    <select id="exportBackupMonth">
+                        <option value="0">January</option>
+                        <option value="1">February</option>
+                        <option value="2">March</option>
+                        <option value="3">April</option>
+                        <option value="4">May</option>
+                        <option value="5">June</option>
+                        <option value="6">July</option>
+                        <option value="7">August</option>
+                        <option value="8">September</option>
+                        <option value="9">October</option>
+                        <option value="10">November</option>
+                        <option value="11">December</option>
+                    </select>
+
+                    <select id="exportBackupYear"></select>
+                </div>
+            </div>
+        </label>
+
+        <label class="export-option-box">
+            <input type="radio" name="exportScope" value="entire" onchange="toggleExportScopeSelects()">
+            <div>
+                <strong style="color:var(--primary-blue);">2. Export Entire Complete System Data</strong>
+                <div style="font-size:11px; color:#666; margin-top:3px;">Downloads all breakdown logs stored across all months and years without any date filtering.</div>
+            </div>
+        </label>
+
+        <div style="margin-top:20px; text-align:right; display:flex; gap:10px; justify-content:flex-end;">
+            <button style="background:#6c757d; color:#fff;" onclick="closeExportBackupModal()">Cancel</button>
+            <button class="btn-save" onclick="executeBackupExport()">📥 Download Backup (.json)</button>
+        </div>
+    </div>
+</div>
+
+<!-- MODAL: Spare Selection Pop-up -->
+<div id="spareSelectModal" class="modal">
+    <div class="modal-content" style="max-width: 450px;">
+        <h3 style="margin-top:0; color:var(--primary-blue);">Select or Add Spare Detail</h3>
+        <p style="font-size:11px; color:#666;">Choose a common spare component from the dropdown list or type a custom spare item name, and enter the quantity:</p>
+        
+        <div class="form-group" style="margin-bottom: 12px;">
+            <label>Preset Spares Dropdown:</label>
+            <select id="presetSparesSelect">
+                <option value="">-- Choose Common Spare --</option>
+                <option value="Sensor">Sensor</option>
+                <option value="Reedswitch">Reedswitch</option>
+                <option value="Solenoid Valve">Solenoid Valve</option>
+                <option value="O-Ring">O-Ring</option>
+                <option value="Relay">Relay</option>
+                <option value="Cylinder">Cylinder</option>
+                <option value="Fuse">Fuse</option>
+                <option value="Proximity Switch">Proximity Switch</option>
+                <option value="Pressure Switch">Pressure Switch</option>
+                <option value="Bearing">Bearing</option>
+                <option value="Coupling">Coupling</option>
+            </select>
+        </div>
+
+        <div class="form-group" style="margin-bottom: 12px;">
+            <label>Or Type Custom Spare Name:</label>
+            <input type="text" id="customSpareInput" placeholder="e.g. Photoelectric Sensor">
+        </div>
+
+        <div class="form-group" style="margin-bottom: 12px;">
+            <label>Number of Quantities (Qty) *:</label>
+            <input type="number" id="spareQuantityInput" value="1" min="1" style="width: 100%;">
+        </div>
+
+        <div style="margin-top:20px; text-align:right; display:flex; gap:10px; justify-content:flex-end;">
+            <button style="background:#6c757d; color:#fff;" onclick="closeSpareSelectModal()">Cancel</button>
+            <button class="btn-primary" onclick="applySpareSelection()">Add to Entry</button>
+        </div>
+    </div>
+</div>
+
+<!-- MODAL: Floating Nature of Issues Popup -->
+<div id="issueModal" class="modal">
+    <div class="modal-content" style="max-width: 650px;">
+        <h3 id="issueModalTitle" style="margin-top:0; color:var(--primary-blue); border-bottom: 2px solid var(--primary-blue); padding-bottom: 8px;">
+            Breakdown Nature of Issues
+        </h3>
+        <div id="issueModalBody" style="margin-top: 15px; max-height: 400px; overflow-y: auto;"></div>
+        <div style="margin-top:20px; text-align:right;">
+            <button class="btn-primary" onclick="closeIssueModal()">Close</button>
+        </div>
+    </div>
+</div>
+
+<!-- MODAL: Email Form & Report Exporter -->
+<div id="emailModal" class="modal">
+    <div class="modal-content">
+        <h3 style="margin-top:0; color:var(--primary-blue); border-bottom:1px solid #ccc; padding-bottom:8px;">
+            ✉️ Send Equipment Breakdown & Availability Report via Email
+        </h3>
+
+        <div class="email-form-section" style="background-color: #eef2f7; border: 1px solid #b8cce4;">
+            <label style="font-weight:bold; font-size:12px; color:var(--primary-blue);">🎯 Report Target Period Filters:</label>
+            <div style="display: flex; gap: 15px; margin-top: 8px; align-items: center; flex-wrap: wrap;">
+                <div>
+                    <label><b>Month:</b></label>
+                    <select id="modalReportMonth">
+                        <option value="0">January</option>
+                        <option value="1">February</option>
+                        <option value="2">March</option>
+                        <option value="3">April</option>
+                        <option value="4">May</option>
+                        <option value="5">June</option>
+                        <option value="6">July</option>
+                        <option value="7">August</option>
+                        <option value="8">September</option>
+                        <option value="9">October</option>
+                        <option value="10">November</option>
+                        <option value="11">December</option>
+                    </select>
+                </div>
+                <div>
+                    <label><b>Year:</b></label>
+                    <select id="modalReportYear"></select>
+                </div>
+            </div>
+        </div>
+
+        <div class="email-form-section">
+            <label style="font-weight:bold; font-size:12px; color:var(--primary-blue);">📥 Select & Download Individual Report File:</label>
+            <div style="display: flex; gap: 10px; margin-top: 8px; align-items: center; flex-wrap: wrap;">
+                <select id="singleReportSelect" style="flex: 1; padding: 6px; font-weight: bold;">
+                    <option value="trend">Breakdown Trend Sheet (.xlsx File)</option>
+                    <option value="availability">Availability Matrix & KPI Summary (.xlsx File)</option>
+                    <option value="logs">Breakdown Log Sheet (.xlsx File)</option>
+                    <option value="quadrant">Quadrant Profiling Summary (.xlsx File)</option>
+                    <option value="json">System Data Backup (.json File)</option>
+                </select>
+                <button class="btn-excel" onclick="downloadSelectedReport()" style="padding: 6px 14px;">📥 Download File</button>
+            </div>
+        </div>
+        
+        <div class="email-form-section">
+            <div class="form-grid" style="grid-template-columns: 1fr;">
+                <div class="form-group">
+                    <label>From Address (Sender)</label>
+                    <input type="email" id="emailFrom" placeholder="engineer@delphi-tvs.com">
+                </div>
+                
+                <div class="form-group">
+                    <label>To Address (Recipient) *</label>
+                    <div id="receiverContainer">
+                        <div class="dynamic-email-row">
+                            <input type="email" class="emailToInput" placeholder="manager@delphi-tvs.com" style="flex:1;" required>
+                            <button type="button" class="btn-primary" onclick="addRecipientField()" title="Add Receiver">+</button>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label>CC Address</label>
+                    <div id="ccContainer">
+                        <div class="dynamic-email-row">
+                            <input type="email" class="emailCcInput" placeholder="lead@delphi-tvs.com" style="flex:1;">
+                            <button type="button" class="btn-primary" onclick="addCcField()" title="Add CC">+</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="form-group" style="margin-top:10px;">
+                <label>Email Subject Line</label>
+                <input type="text" id="emailSubject" value="Equipment Breakdown & Availability Status Report">
+            </div>
+        </div>
+
+        <div style="margin-top:20px; text-align:right; display:flex; gap:10px; justify-content:flex-end;">
+            <button style="background:#6c757d; color:#fff;" onclick="closeEmailModal()">Cancel</button>
+            <button class="btn-primary" onclick="sendEmailViaWebGmail()">Open Direct in Gmail Web Browser</button>
+        </div>
+    </div>
+</div>
+
+<input type="file" id="fileInput" style="display:none" onchange="handleFileSelect(event)">
+
+<script>
+    const firebaseConfig = {
+        apiKey: "AIzaSyDemoConfigKeyForBreakdownApp12345",
+        authDomain: "breakdown-system.firebaseapp.com",
+        databaseURL: "https://breakdown-system-default-rtdb.firebaseio.com",
+        projectId: "breakdown-system",
+        storageBucket: "breakdown-system.appspot.com",
+        messagingSenderId: "1234567890",
+        appId: "1:1234567890:web:abcdef123456"
+    };
+
+    if (!firebase.apps.length) {
+        firebase.initializeApp(firebaseConfig);
+    }
+    const db = firebase.database();
+    const logsRef = db.ref('breakdownLogs');
+    const shiftEngRef = db.ref('shiftEngineers');
+    const respEngRef = db.ref('respEngineers');
+
+    const logoUrl = "https://static.businessworld.in/1681206514_Gv5Utq_Delphi_TVS_Logo.png";
+
+    const rawMachineData = [
+        { mcNo: "OP30052", name: "DURR 1" },
+        { mcNo: "OP30060", name: "DURR 2" },
+        { mcNo: "OP30061", name: "DURR 3" },
+        { mcNo: "OP30062", name: "DURR 4" },
+        { mcNo: "OM40204", name: "NNA" },
+        { mcNo: "OM4006A", name: "COIL ASSEMBLY 1" },
+        { mcNo: "OM4006B", name: "PIN & SPRING 1" },
+        { mcNo: "OM40158", name: "VTM 1" },
+        { mcNo: "OM40006F", name: "LABELLING 1" },
+        { mcNo: "OM40198", name: "COIL ASSEMBLY 2" },
+        { mcNo: "OM40141B", name: "PIN & SPRING 2" },
+        { mcNo: "OM40169", name: "VTM 2" },
+        { mcNo: "OM0141F", name: "LABELLING 2" },
+        { mcNo: "OM40336", name: "COIL ASSEMBLY 3" },
+        { mcNo: "OM40337", name: "PIN & SPRING 3" },
+        { mcNo: "OM40335", name: "VTM 3" },
+        { mcNo: "OM40367", name: "PIN SEGREGATION" },
+        { mcNo: "OM40368", name: "SPRING SEGREGATION" },
+        { mcNo: "OM40021", name: "SCREWING & LEAK TEST 1" },
+        { mcNo: "OT25010", name: "BENCH 21" },
+        { mcNo: "OT25008", name: "BENCH 31" },
+        { mcNo: "OT25007", name: "BENCH 41" },
+        { mcNo: "OT25009", name: "BENCH 51" },
+        { mcNo: "OT25038", name: "BENCH 61" },
+        { mcNo: "OM40022", name: "UNSCREWING 1" },
+        { mcNo: "OT25058", name: "LEAK TEST 2" },
+        { mcNo: "OT25096", name: "BENCH 22" },
+        { mcNo: "OT25067", name: "BENCH 32" },
+        { mcNo: "OT25068", name: "BENCH 42" },
+        { mcNo: "OT25069", name: "BENCH 52" },
+        { mcNo: "OT25070", name: "BENCH 62" },
+        { mcNo: "OT25059", name: "LEAK TEST 82" },
+        { mcNo: "OT25114", name: "BENCH 82" },
+        { mcNo: "OT25120", name: "ATEQ 3" },
+        { mcNo: "", name: "JCB ATEQ 4" },
+        { mcNo: "OT25121", name: "BENCH 23" },
+        { mcNo: "OT25115", name: "BENCH 43" },
+        { mcNo: "", name: "BENCH 53" },
+        { mcNo: "", name: "ATEQ 4" },
+        { mcNo: "", name: "BENCH 24" },
+        { mcNo: "", name: "BENCH 34" },
+        { mcNo: "", name: "BENCH 44" },
+        { mcNo: "", name: "BENCH 54" },
+        { mcNo: "OM40361", name: "COIL ORIENTATION & CONE LEAK 1" },
+        { mcNo: "OM40362", name: "M14 THREAD CHECKING 1" },
+        { mcNo: "OM40160", name: "LASER MARKING 1" },
+        { mcNo: "OM40050", name: "COPPER WASHER ASSY 1" },
+        { mcNo: "", name: "MANUAL INSPECTION 1" },
+        { mcNo: "OM40202", name: "COIL ORIENTATION & CONE LEAK 2" },
+        { mcNo: "OM40203", name: "M14 THREAD CHECKING 2" },
+        { mcNo: "OM54023", name: "LASER MARKING 2" },
+        { mcNo: "OM0159D", name: "COPPER WASHER ASSY 2" },
+        { mcNo: "", name: "MANUAL INSPECTION 2" },
+        { mcNo: "OM40363", name: "COIL ORIENTATION & CONE LEAK 3" },
+        { mcNo: "OM40365", name: "M14 THREAD CHECKING 3" },
+        { mcNo: "OM54025", name: "LASER MARKING 3" },
+        { mcNo: "OM40366", name: "COPPER WASHER ASSY 3" },
+        { mcNo: "", name: "MANUAL INSPECTION 3" },
+        { mcNo: "", name: "AUTO INSPECTION" },
+        { mcNo: "", name: "NON HMI ORING" },
+        { mcNo: "", name: "HMI ORING" },
+        { mcNo: "OQ25018", name: "EXTRACTION BENCH" },
+        { mcNo: "OT25075", name: "BENCH 72" },
+        { mcNo: "OT25007", name: "POWERPACK 1" },
+        { mcNo: "", name: "POWERPACK 2" },
+        { mcNo: "", name: "POWERPACK 3" },
+        { mcNo: "", name: "POWERPACK 4" },
+        { mcNo: "", name: "POWERPACK - SILVER BENCH" },
+        { mcNo: "OM4007", name: "DMC READING-REWORK" },
+        { mcNo: "OM4007", name: "INJECTOR DISASSEMBLY - REWORK" },
+        { mcNo: "OM4007", name: "NHB CAPNUT CLEANING -REWORK" },
+        { mcNo: "", name: "FQG 1" },
+        { mcNo: "", name: "FQG 2" },
+        { mcNo: "", name: "FQG 3" },
+        { mcNo: "", name: "FQG 4" }
+    ];
+
+    const machineMaster = rawMachineData.map((mc, idx) => {
+        const uppercaseName = mc.name.toUpperCase();
+        const isCrit = uppercaseName.includes("DURR 3") || uppercaseName.includes("DURR 4") || uppercaseName.includes("VTM");
+        return {
+            id: idx + 1,
+            mcNo: mc.mcNo,
+            name: uppercaseName,
+            isCritical: isCrit,
+            plannedHrsPerMonth: 720
+        };
+    });
+
+    let breakdownLogs = [];
+    let shiftEngineers = [];
+    let respEngineers = [];
+    let currentEntrySpares = [];
+
+    window.onload = function() {
+        populateYearDropdown();
+        populateModalYearDropdown();
+        populateSparesYearDropdown();
+        populateMachineDropdowns();
+        populateExportBackupYearDropdown();
+        
+        const today = new Date().toISOString().split('T')[0];
+        const copyDateElem = document.getElementById('copyFilterDate');
+        if (copyDateElem) copyDateElem.value = today;
+
+        // Load local backup first
+        try {
+            const localData = localStorage.getItem('breakdownLogsBackup');
+            if (localData) breakdownLogs = JSON.parse(localData);
+        } catch(e) {}
+
+        logsRef.on('value', (snapshot) => {
+            const data = snapshot.val();
+            if (data) {
+                breakdownLogs = Object.values(data);
+                localStorage.setItem('breakdownLogsBackup', JSON.stringify(breakdownLogs));
+            }
+            document.getElementById('syncStatus').innerText = '🟢 Connected & Synced';
+            document.getElementById('syncStatus').style.background = '#dcfce7';
+            document.getElementById('syncStatus').style.color = '#15803d';
+            syncEngineersFromLogs();
+            onPeriodChange();
+        }, (error) => {
+            console.warn("Firebase offline or demo key:", error);
+            document.getElementById('syncStatus').innerText = '🟢 Local/Offline Mode Active';
+            document.getElementById('syncStatus').style.background = '#e2e8f0';
+            document.getElementById('syncStatus').style.color = '#1f4e78';
+            onPeriodChange();
+        });
+
+        shiftEngRef.on('value', (snapshot) => {
+            const data = snapshot.val();
+            if (data) shiftEngineers = Object.values(data);
+            populateEngineerDropdowns();
+        });
+
+        respEngRef.on('value', (snapshot) => {
+            const data = snapshot.val();
+            if (data) respEngineers = Object.values(data);
+            populateEngineerDropdowns();
+        });
+
+        onPeriodChange();
+    };
+
+    function openExportBackupModal() {
+        document.getElementById('exportBackupMonth').value = document.getElementById('selectMonth').value;
+        document.getElementById('exportBackupYear').value = document.getElementById('selectYear').value;
+        toggleExportScopeSelects();
+        document.getElementById('exportBackupModal').style.display = 'flex';
+    }
+
+    function closeExportBackupModal() {
+        document.getElementById('exportBackupModal').style.display = 'none';
+    }
+
+    function toggleExportScopeSelects() {
+        const isSelectedScope = document.querySelector('input[name="exportScope"]:checked')?.value === 'selected';
+        const group = document.getElementById('exportMonthYearGroup');
+        if (group) {
+            group.style.opacity = isSelectedScope ? '1' : '0.4';
+            group.querySelectorAll('select').forEach(sel => sel.disabled = !isSelectedScope);
+        }
+    }
+
+    function populateExportBackupYearDropdown() {
+        const yearSelect = document.getElementById('exportBackupYear');
+        if (!yearSelect) return;
+        yearSelect.innerHTML = '';
+        const startYear = 2020;
+        const endYear = 2100;
+        const currentYear = new Date().getFullYear();
+
+        for (let y = startYear; y <= endYear; y++) {
+            const option = document.createElement('option');
+            option.value = y;
+            option.textContent = y;
+            if (y === currentYear) {
+                option.selected = true;
+            }
+            yearSelect.appendChild(option);
+        }
+    }
+
+    function executeBackupExport() {
+        const isSelectedScope = document.querySelector('input[name="exportScope"]:checked')?.value === 'selected';
+        let dataToExport = [];
+        let filename = 'breakdown_backup_entire.json';
+
+        if (isSelectedScope) {
+            const month = parseInt(document.getElementById('exportBackupMonth').value);
+            const year = parseInt(document.getElementById('exportBackupYear').value);
+            
+            const monthNames = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+            filename = `breakdown_backup_${monthNames[month]}_${year}.json`;
+
+            dataToExport = breakdownLogs.filter(log => {
+                const d = new Date(log.date);
+                return d.getFullYear() === year && d.getMonth() === month;
+            });
+        } else {
+            dataToExport = breakdownLogs;
+        }
+
+        const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(dataToExport, null, 2));
+        const downloadAnchor = document.createElement('a');
+        downloadAnchor.setAttribute("href", dataStr);
+        downloadAnchor.setAttribute("download", filename);
+        document.body.appendChild(downloadAnchor);
+        downloadAnchor.click();
+        downloadAnchor.remove();
+
+        closeExportBackupModal();
+    }
+
+    function addRecipientField() {
+        const container = document.getElementById('receiverContainer');
+        const div = document.createElement('div');
+        div.className = 'dynamic-email-row';
+        div.innerHTML = `
+            <input type="email" class="emailToInput" placeholder="recipient@delphi-tvs.com" style="flex:1;">
+            <button type="button" class="btn-danger" onclick="removeDynamicField(this)">-</button>
+        `;
+        container.appendChild(div);
+    }
+
+    function addCcField() {
+        const container = document.getElementById('ccContainer');
+        const div = document.createElement('div');
+        div.className = 'dynamic-email-row';
+        div.innerHTML = `
+            <input type="email" class="emailCcInput" placeholder="cc@delphi-tvs.com" style="flex:1;">
+            <button type="button" class="btn-danger" onclick="removeDynamicField(this)">-</button>
+        `;
+        container.appendChild(div);
+    }
+
+    function removeDynamicField(btn) {
+        btn.parentElement.remove();
+    }
+
+    function showIssuePopup(mcName, dateStr) {
+        const logs = breakdownLogs.filter(l => l.mcName === mcName && l.date === dateStr);
+        const modal = document.getElementById('issueModal');
+        const title = document.getElementById('issueModalTitle');
+        const body = document.getElementById('issueModalBody');
+
+        const dParts = dateStr.split('-');
+        const formattedDate = (dParts.length === 3) ? `${dParts[2]}-${new Date(dateStr).toLocaleString('en-US', {month:'short'})}-${dParts[0]}` : dateStr;
+
+        title.innerText = `Nature of Issues - ${mcName} (${formattedDate})`;
+
+        if (logs.length === 0) {
+            body.innerHTML = '<p style="color:#666;">No detailed issue entries found for this date.</p>';
+        } else {
+            let html = `<div style="display:flex; flex-direction:column; gap:12px;">`;
+            logs.forEach((log, index) => {
+                html += `
+                    <div style="border: 1px solid #ccc; border-left: 5px solid #d9534f; border-radius: 6px; padding: 12px; background: #fdfdfd; text-align: left;">
+                        <div style="font-weight: bold; font-size: 13px; color: #1f4e78; margin-bottom: 6px; display: flex; justify-content: space-between; border-bottom: 1px dashed #eee; padding-bottom: 4px;">
+                            <span>Occurrence #${index + 1} &bull; Shift ${log.shift} (${log.time || '08:00'})</span>
+                            <span style="color:${log.status==='STOP'?'red':'green'}; font-weight:bold;">Status: ${log.status}</span>
+                        </div>
+                        <div style="font-size: 12px; margin-bottom: 6px;">
+                            <strong>Nature of Issue / Alarm Display:</strong><br>
+                            <span style="color: #c9302c; font-weight: bold; font-size: 13px;">${log.issue || 'No issue description'}</span>
+                        </div>
+                        <div style="font-size: 11px; color: #444; display: grid; grid-template-columns: 1fr 1fr; gap: 6px; background: #f5f5f5; padding: 6px 8px; border-radius: 4px; margin-bottom: 6px;">
+                            <div><strong>Type:</strong> ${log.typeIssue === 'M' ? 'Mechanical (M)' : 'Electrical (E)'}</div>
+                            <div><strong>Loss Time:</strong> ${log.lossTime} mins</div>
+                            <div><strong>Shift Engineer:</strong> ${log.shiftEng || 'N/A'}</div>
+                            <div><strong>PCA Responsibility:</strong> ${log.respEng || 'N/A'} (${log.pcaStatus})</div>
+                        </div>
+                        ${log.immAction ? `<div style="font-size: 11px; margin-top: 4px;"><strong>Immediate Action:</strong> ${log.immAction}</div>` : ''}
+                        ${log.permAction ? `<div style="font-size: 11px; margin-top: 2px;"><strong>Permanent Action:</strong> ${log.permAction}</div>` : ''}
+                        ${log.counterMeasure ? `<div style="font-size: 11px; margin-top: 2px;"><strong>Counter Measure:</strong> ${log.counterMeasure}</div>` : ''}
+                        ${log.spares ? `<div style="font-size: 11px; margin-top: 2px;"><strong>Spares Details:</strong> ${log.spares}</div>` : ''}
+                    </div>
+                `;
+            });
+            html += `</div>`;
+            body.innerHTML = html;
+        }
+
+        modal.style.display = 'flex';
+    }
+
+    function closeIssueModal() {
+        document.getElementById('issueModal').style.display = 'none';
+    }
+
+    function showSpareSelectModal() {
+        document.getElementById('spareSelectModal').style.display = 'flex';
+        document.getElementById('presetSparesSelect').value = '';
+        document.getElementById('customSpareInput').value = '';
+        document.getElementById('spareQuantityInput').value = '1';
+    }
+
+    function closeSpareSelectModal() {
+        document.getElementById('spareSelectModal').style.display = 'none';
+    }
+
+    function applySpareSelection() {
+        const presetVal = document.getElementById('presetSparesSelect').value;
+        const customVal = document.getElementById('customSpareInput').value.trim();
+        const qtyVal = parseInt(document.getElementById('spareQuantityInput').value) || 1;
+
+        const selectedName = customVal !== '' ? customVal : presetVal;
+
+        if (!selectedName) {
+            alert('Please select a spare item from the dropdown or enter a custom name.');
+            return;
+        }
+
+        currentEntrySpares.push({
+            name: selectedName,
+            qty: qtyVal
+        });
+
+        renderSparesChips();
+        closeSpareSelectModal();
+    }
+
+    function renderSparesChips() {
+        const container = document.getElementById('sparesChipsContainer');
+        if (!container) return;
+
+        if (currentEntrySpares.length === 0) {
+            container.innerHTML = '<span style="color:#aaa; font-size:11px; font-style:italic;">No spares added yet. Click \'+\' to add spares with quantities.</span>';
+            updateSparesInputField();
+            return;
+        }
+
+        let html = '';
+        currentEntrySpares.forEach((item, idx) => {
+            html += `
+                <span style="display:inline-flex; align-items:center; background:#e2e8f0; color:#1f4e78; padding:3px 8px; border-radius:12px; font-size:11px; font-weight:bold; border:1px solid #cbd5e1;">
+                    ${item.name} (Qty: ${item.qty})
+                    <button type="button" onclick="removeSpareChip(${idx})" style="background:none; border:none; color:#d9534f; font-weight:bold; margin-left:6px; cursor:pointer; font-size:13px; padding:0 2px;" title="Delete this spare item">&times;</button>
+                </span>
+            `;
+        });
+        container.innerHTML = html;
+        updateSparesInputField();
+    }
+
+    function removeSpareChip(index) {
+        currentEntrySpares.splice(index, 1);
+        renderSparesChips();
+    }
+
+    function clearAllSpares() {
+        currentEntrySpares = [];
+        renderSparesChips();
+    }
+
+    function updateSparesInputField() {
+        const input = document.getElementById('inputSpares');
+        if (!input) return;
+        if (currentEntrySpares.length === 0) {
+            input.value = '';
+        } else {
+            input.value = currentEntrySpares.map(s => `${s.name} (Qty: ${s.qty})`).join(', ');
+        }
+    }
+
+    function populateEngineerDropdowns() {
+        const shiftSelect = document.getElementById('inputShiftEngineer');
+        const respSelect = document.getElementById('inputRespEngineer');
+
+        if (shiftSelect) {
+            const currentVal = shiftSelect.value;
+            shiftSelect.innerHTML = '<option value="">-- Select Shift Engineer --</option>';
+            shiftEngineers.forEach(eng => {
+                shiftSelect.innerHTML += `<option value="${eng}">${eng}</option>`;
+            });
+            if (currentVal) shiftSelect.value = currentVal;
+        }
+
+        if (respSelect) {
+            const currentVal = respSelect.value;
+            respSelect.innerHTML = '<option value="">-- Select PCA Engineer --</option>';
+            respEngineers.forEach(eng => {
+                respSelect.innerHTML += `<option value="${eng}">${eng}</option>`;
+            });
+            if (currentVal) respSelect.value = currentVal;
+        }
+    }
+
+    function syncEngineersFromLogs() {
+        let changed = false;
+        breakdownLogs.forEach(l => {
+            if (l.shiftEng && !shiftEngineers.includes(l.shiftEng)) {
+                shiftEngineers.push(l.shiftEng);
+                changed = true;
+            }
+            if (l.respEng && !respEngineers.includes(l.respEng)) {
+                respEngineers.push(l.respEng);
+                changed = true;
+            }
+        });
+        if (changed) {
+            try { shiftEngRef.set(shiftEngineers); respEngRef.set(respEngineers); } catch(e){}
+            populateEngineerDropdowns();
+        }
+    }
+
+    function addShiftEngineer() {
+        const name = prompt("Enter New Shift Engineer Name:");
+        if (name && name.trim()) {
+            const cleanName = name.trim();
+            if (!shiftEngineers.includes(cleanName)) {
+                shiftEngineers.push(cleanName);
+                try { shiftEngRef.set(shiftEngineers); } catch(e){}
+                populateEngineerDropdowns();
+                document.getElementById('inputShiftEngineer').value = cleanName;
+            } else {
+                alert("Engineer name already exists in dropdown list.");
+                document.getElementById('inputShiftEngineer').value = cleanName;
+            }
+        }
+    }
+
+    function deleteShiftEngineer() {
+        const select = document.getElementById('inputShiftEngineer');
+        const selectedName = select.value;
+        if (!selectedName) {
+            alert("Please select a Shift Engineer from the dropdown to delete.");
+            return;
+        }
+        if (confirm(`Are you sure you want to delete "${selectedName}" from the Shift Engineer list?`)) {
+            shiftEngineers = shiftEngineers.filter(eng => eng !== selectedName);
+            try { shiftEngRef.set(shiftEngineers); } catch(e){}
+            populateEngineerDropdowns();
+        }
+    }
+
+    function addRespEngineer() {
+        const name = prompt("Enter New PCA Responsibility Engineer Name:");
+        if (name && name.trim()) {
+            const cleanName = name.trim();
+            if (!respEngineers.includes(cleanName)) {
+                respEngineers.push(cleanName);
+                try { respEngRef.set(respEngineers); } catch(e){}
+                populateEngineerDropdowns();
+                document.getElementById('inputRespEngineer').value = cleanName;
+            } else {
+                alert("Engineer name already exists in dropdown list.");
+                document.getElementById('inputRespEngineer').value = cleanName;
+            }
+        }
+    }
+
+    function deleteRespEngineer() {
+        const select = document.getElementById('inputRespEngineer');
+        const selectedName = select.value;
+        if (!selectedName) {
+            alert("Please select a PCA Responsibility Engineer from the dropdown to delete.");
+            return;
+        }
+        if (confirm(`Are you sure you want to delete "${selectedName}" from the PCA Responsibility Engineer list?`)) {
+            respEngineers = respEngineers.filter(eng => eng !== selectedName);
+            try { respEngRef.set(respEngineers); } catch(e){}
+            populateEngineerDropdowns();
+        }
+    }
+
+    function populateYearDropdown() {
+        const yearSelect = document.getElementById('selectYear');
+        yearSelect.innerHTML = '';
+        
+        const startYear = 2020;
+        const endYear = 2100;
+        const currentYear = new Date().getFullYear();
+
+        for (let y = startYear; y <= endYear; y++) {
+            const option = document.createElement('option');
+            option.value = y;
+            option.textContent = y;
+            if (y === currentYear) {
+                option.selected = true;
+            }
+            yearSelect.appendChild(option);
+        }
+    }
+
+    function populateModalYearDropdown() {
+        const yearSelect = document.getElementById('modalReportYear');
+        if (!yearSelect) return;
+        yearSelect.innerHTML = '';
+        const startYear = 2020;
+        const endYear = 2100;
+        const currentYear = new Date().getFullYear();
+
+        for (let y = startYear; y <= endYear; y++) {
+            const option = document.createElement('option');
+            option.value = y;
+            option.textContent = y;
+            if (y === currentYear) {
+                option.selected = true;
+            }
+            yearSelect.appendChild(option);
+        }
+    }
+
+    function populateSparesYearDropdown() {
+        const yearSelect = document.getElementById('sparesYearSelect');
+        if (!yearSelect) return;
+        yearSelect.innerHTML = '<option value="all">All Years</option>';
+        const startYear = 2020;
+        const endYear = 2100;
+        const currentYear = new Date().getFullYear();
+
+        for (let y = startYear; y <= endYear; y++) {
+            const option = document.createElement('option');
+            option.value = y;
+            option.textContent = y;
+            if (y === currentYear) {
+                option.selected = true;
+            }
+            yearSelect.appendChild(option);
+        }
+    }
+
+    function populateMachineDropdowns() {
+        const filterMc = document.getElementById('filterMachine');
+        const inputMc = document.getElementById('inputMachineSelect');
+        const quadMc = document.getElementById('quadrantFilterMachine');
+        const trendMc = document.getElementById('trendChartMachine');
+        const compareGrid = document.getElementById('compareMachineCheckboxes');
+
+        if (filterMc) {
+            filterMc.innerHTML = '<option value="">All Machines</option>';
+            machineMaster.forEach(m => {
+                filterMc.innerHTML += `<option value="${m.name}">${m.name}</option>`;
+            });
+        }
+
+        if (inputMc) {
+            inputMc.innerHTML = '';
+            machineMaster.forEach(m => {
+                const label = m.mcNo ? `${m.mcNo} - ${m.name}` : m.name;
+                inputMc.innerHTML += `<option value="${m.name}">${label}</option>`;
+            });
+        }
+
+        if (quadMc) {
+            quadMc.innerHTML = '<option value="">All Machines</option>';
+            machineMaster.forEach(m => {
+                quadMc.innerHTML += `<option value="${m.name}">${m.name}</option>`;
+            });
+        }
+
+        if (trendMc) {
+            trendMc.innerHTML = '<option value="">All Equipment (Total Trend)</option>';
+            machineMaster.forEach(m => {
+                trendMc.innerHTML += `<option value="${m.name}">${m.name}</option>`;
+            });
+        }
+
+        if (compareGrid) {
+            compareGrid.innerHTML = '';
+            machineMaster.forEach((m) => {
+                compareGrid.innerHTML += `
+                    <label class="compare-checkbox-item">
+                        <input type="checkbox" value="${m.name}" checked onchange="renderMachineComparison()">
+                        <span>${m.name}</span>
+                    </label>
+                `;
+            });
+        }
+    }
+
+    function onPeriodChange() {
+        updateFilterDatesFromMonthYear();
+        renderBreakdownLogTable();
+        renderAvailabilityMatrix();
+        renderKpiSummary();
+        renderBreakdownTrend();
+        renderSparesTrend();
+        renderMachineComparison();
+        renderQuadrantProfiling();
+    }
+
+    function updateFilterDatesFromMonthYear() {
+        const year = parseInt(document.getElementById('selectYear').value);
+        const month = parseInt(document.getElementById('selectMonth').value);
+
+        const firstDay = `${year}-${String(month + 1).padStart(2, '0')}-01`;
+        const lastDayNum = new Date(year, month + 1, 0).getDate();
+        const lastDay = `${year}-${String(month + 1).padStart(2, '0')}-${String(lastDayNum).padStart(2, '0')}`;
+
+        document.getElementById('compareFromDate').value = firstDay;
+        document.getElementById('compareToDate').value = lastDay;
+        document.getElementById('quadrantFromDate').value = firstDay;
+        document.getElementById('quadrantToDate').value = lastDay;
+    }
+
+    function renderBreakdownLogTable() {
+        const tbody = document.getElementById('breakdownLogTableBody');
+        if (!tbody) return;
+
+        const year = parseInt(document.getElementById('selectYear').value);
+        const month = parseInt(document.getElementById('selectMonth').value);
+        const searchText = document.getElementById('filterSearch')?.value.toLowerCase() || "";
+        const machineFilter = document.getElementById('filterMachine')?.value || "";
+        const shiftFilter = document.getElementById('filterShift')?.value || "";
+
+        tbody.innerHTML = '';
+
+        let count = 0;
+        breakdownLogs.forEach(log => {
+            const d = new Date(log.date);
+            if (d.getFullYear() === year && d.getMonth() === month) {
+                if (machineFilter && log.mcName !== machineFilter) return;
+                if (shiftFilter && String(log.shift) !== String(shiftFilter)) return;
+
+                if (searchText) {
+                    const rowStr = `${log.mcName} ${log.issue} ${log.shiftEng} ${log.respEng} ${log.spares}`.toLowerCase();
+                    if (!rowStr.includes(searchText)) return;
+                }
+
+                count++;
+                const formattedDate = `${String(d.getDate()).padStart(2, '0')}/${d.toLocaleString('en-US', {month:'short'})}/${String(d.getFullYear()).slice(-2)}`;
+                const opTime = Number(log.opTime) || 480;
+                const lossTime = Number(log.lossTime) || 0;
+                const avail = opTime > 0 ? (((opTime - lossTime) / opTime) * 100).toFixed(2) : "100.00";
+
+                const tr = document.createElement('tr');
+                tr.innerHTML = `
+                    <td>${count}</td>
+                    <td>${formattedDate}</td>
+                    <td>${log.shift}</td>
+                    <td>${opTime}</td>
+                    <td><b>${log.mcName}</b></td>
+                    <td>${log.mcNo || ''}</td>
+                    <td style="text-align:left;">${log.issue || ''}</td>
+                    <td>${log.typeIssue || 'M'}</td>
+                    <td style="color:${lossTime > 0 ? 'red' : 'green'}; font-weight:bold;">${lossTime}</td>
+                    <td style="color:${log.status === 'STOP' ? 'red' : 'green'}; font-weight:bold;">${log.status}</td>
+                    <td style="text-align:left;">${log.immAction || ''}</td>
+                    <td style="text-align:left;">${log.permAction || ''}</td>
+                    <td style="text-align:left;">${log.counterMeasure || ''}</td>
+                    <td class="bg-green">${avail}%</td>
+                    <td>${log.shiftEng || ''}</td>
+                    <td>${log.spares || ''}</td>
+                    <td>${log.respEng || ''}</td>
+                    <td>${log.pcaStatus || ''}</td>
+                    <td>
+                        <button class="btn-danger" onclick="deleteBreakdownLog('${log.id}')">Delete</button>
+                    </td>
+                `;
+                tbody.appendChild(tr);
+            }
+        });
+
+        if (count === 0) {
+            tbody.innerHTML = '<tr><td colspan="19" style="color:#888; padding:15px;">No breakdown log entries recorded for this period.</td></tr>';
+        }
+    }
+
+    function saveBreakdownEntry() {
+        const dateVal = document.getElementById('inputDate').value;
+        const timeVal = document.getElementById('inputTime').value || "08:00";
+        const shiftVal = document.getElementById('inputShift').value;
+        const opTimeVal = Number(document.getElementById('inputOpTime').value) || 480;
+        const mcNameVal = document.getElementById('inputMachineSelect').value;
+        const issueVal = document.getElementById('inputIssue').value;
+        const typeVal = document.getElementById('inputTypeIssue').value;
+        const lossVal = Number(document.getElementById('inputLossTime').value) || 0;
+        const statusVal = document.getElementById('inputStatus').value;
+        const immActionVal = document.getElementById('inputImmediateAction').value;
+        const permActionVal = document.getElementById('inputPermanentAction').value;
+        const cmVal = document.getElementById('inputCounterMeasure').value;
+        const shiftEngVal = document.getElementById('inputShiftEngineer').value;
+        const respEngVal = document.getElementById('inputRespEngineer').value;
+        const pcaStatusVal = document.getElementById('inputPcaStatus').value;
+
+        if (!dateVal || !mcNameVal) {
+            alert('Please fill in Date and Select a Machine.');
+            return;
+        }
+
+        const mcObj = machineMaster.find(m => m.name === mcNameVal);
+        const mcNoVal = mcObj ? mcObj.mcNo : "";
+
+        const sparesDetailStr = currentEntrySpares.length > 0 ? currentEntrySpares.map(s => `${s.name} (Qty: ${s.qty})`).join(', ') : "";
+
+        const newLog = {
+            id: 'id_' + Date.now() + '_' + Math.floor(Math.random() * 1000),
+            date: dateVal,
+            time: timeVal,
+            shift: shiftVal,
+            opTime: opTimeVal,
+            mcName: mcNameVal,
+            mcNo: mcNoVal,
+            issue: issueVal,
+            typeIssue: typeVal,
+            lossTime: lossVal,
+            status: statusVal,
+            immAction: immActionVal,
+            permAction: permActionVal,
+            counterMeasure: cmVal,
+            shiftEng: shiftEngVal,
+            spares: sparesDetailStr,
+            respEng: respEngVal,
+            pcaStatus: pcaStatusVal,
+            avail: opTimeVal > 0 ? (((opTimeVal - lossVal) / opTimeVal) * 100) : 100
+        };
+
+        breakdownLogs.push(newLog);
+        persistLogs();
+        closeAddModal();
+        onPeriodChange();
+    }
+
+    function deleteBreakdownLog(id) {
+        if (confirm('Are you sure you want to delete this breakdown log entry?')) {
+            breakdownLogs = breakdownLogs.filter(l => String(l.id) !== String(id));
+            persistLogs();
+            onPeriodChange();
+        }
+    }
+
+    function clearFilters() {
+        document.getElementById('filterSearch').value = '';
+        document.getElementById('filterMachine').value = '';
+        document.getElementById('filterShift').value = '';
+        renderBreakdownLogTable();
+    }
+
+    function persistLogs() {
+        try {
+            localStorage.setItem('breakdownLogsBackup', JSON.stringify(breakdownLogs));
+            const logsMap = {};
+            breakdownLogs.forEach(log => {
+                logsMap[log.id] = log;
+            });
+            logsRef.set(logsMap).catch(err => console.warn("Firebase set warning:", err));
+        } catch(e) {
+            console.error("Persist error:", e);
+        }
+    }
+
+    function loadFromFile() {
+        document.getElementById('fileInput').click();
+    }
+
+    function handleFileSelect(event) {
+        const file = event.target.files[0];
+        if (!file) return;
+        const reader = new FileReader();
+        reader.onload = function(e) {
+            try {
+                breakdownLogs = JSON.parse(e.target.result);
+                persistLogs();
+                syncEngineersFromLogs();
+                onPeriodChange();
+                alert('Data successfully loaded!');
+            } catch (err) {
+                alert('Invalid JSON File!');
+            }
+        };
+        reader.readAsText(file);
+    }
+
+    function switchTab(tabId, btn) {
+        document.querySelectorAll('.tab-content').forEach(tc => tc.classList.remove('active'));
+        document.querySelectorAll('.tab-btn').forEach(tb => tb.classList.remove('active'));
+        document.getElementById(tabId).classList.add('active');
+        btn.classList.add('active');
+
+        if (tabId === 'trendTab') {
+            renderBreakdownTrend();
+        } else if (tabId === 'sparesTab') {
+            renderSparesTrend();
+        } else if (tabId === 'compareTab') {
+            renderMachineComparison();
+        } else if (tabId === 'quadrantTab') {
+            renderQuadrantProfiling();
+        } else if (tabId === 'copyTab') {
+            generateCopyContent();
+        }
+    }
+
+    function openAddModal() {
+        currentEntrySpares = [];
+        renderSparesChips();
+        populateEngineerDropdowns();
+        document.getElementById('entryModal').style.display = 'flex';
+        document.getElementById('inputDate').valueAsDate = new Date();
+    }
+
+    function closeAddModal() {
+        document.getElementById('entryModal').style.display = 'none';
+    }
+
+    function openEmailModal() {
+        populateModalYearDropdown();
+        document.getElementById('modalReportMonth').value = document.getElementById('selectMonth').value;
+        document.getElementById('modalReportYear').value = document.getElementById('selectYear').value;
+        document.getElementById('emailModal').style.display = 'flex';
+    }
+
+    function closeEmailModal() {
+        document.getElementById('emailModal').style.display = 'none';
+    }
+
+    function generateCopyContent() {
+        const dateVal = document.getElementById('copyFilterDate').value;
+        const shiftVal = document.getElementById('copyFilterShift').value;
+        const descVal = document.getElementById('copyDescription').value;
+
+        if (!dateVal) {
+            document.getElementById('copyPreviewArea').value = "Please select a date.";
+            return;
+        }
+
+        const dParts = dateVal.split('-');
+        const formattedDate = (dParts.length === 3) ? `${dParts[2]}.${dParts[1]}.${dParts[0]}` : dateVal;
+
+        let formattedOutput = `${formattedDate}\nShift ${shiftVal}\n\n`;
+
+        const filteredLogs = breakdownLogs.filter(l => l.date === dateVal && String(l.shift) === String(shiftVal));
+
+        if (filteredLogs.length === 0) {
+            formattedOutput += `No breakdown entries recorded.`;
+        } else {
+            const machineGroups = {};
+            filteredLogs.forEach(entry => {
+                const mc = entry.mcName || "UNKNOWN MACHINE";
+                if (!machineGroups[mc]) {
+                    machineGroups[mc] = {
+                        issues: [],
+                        totalDowntime: 0
+                    };
+                }
+                const loss = Number(entry.lossTime) || 0;
+                machineGroups[mc].totalDowntime += loss;
+                machineGroups[mc].issues.push({
+                    desc: entry.issue || 'No issue description',
+                    lossTime: loss
+                });
+            });
+
+            Object.keys(machineGroups).forEach((mcName, index) => {
+                const group = machineGroups[mcName];
+                formattedOutput += `${mcName}\n`;
+                
+                group.issues.forEach(item => {
+                    formattedOutput += `${item.desc}\n`;
+                });
+                
+                formattedOutput += `(${group.totalDowntime} mins)\n`;
+
+                if (index < Object.keys(machineGroups).length - 1) {
+                    formattedOutput += `\n`;
+                }
+            });
+        }
+
+        if (descVal && descVal.trim() !== '') {
+            formattedOutput += `\n\nNotes / Description:\n${descVal.trim()}`;
+        }
+
+        document.getElementById('copyPreviewArea').value = formattedOutput;
+    }
+
+    function copyToClipboard() {
+        const copyText = document.getElementById('copyPreviewArea');
+        if (!copyText.value) return;
+
+        copyText.select();
+        copyText.setSelectionRange(0, 99999);
+
+        navigator.clipboard.writeText(copyText.value).then(() => {
+            alert("Breakdown summary copied to clipboard!");
+        }).catch(err => {
+            alert("Failed to copy text: " + err);
+        });
+    }
+
+    function getContinuousWeekNumber(d) {
+        const date = new Date(d.getTime());
+        date.setHours(0, 0, 0, 0);
+        date.setDate(date.getDate() + 3 - (date.getDay() + 6) % 7);
+        const week1 = new Date(date.getFullYear(), 0, 4);
+        return 1 + Math.round(((date.getTime() - week1.getTime()) / 86400000 - 3 + (week1.getDay() + 6) % 7) / 7);
+    }
+
+    function getKpiMetrics() {
+        const year = parseInt(document.getElementById('selectYear').value);
+        const month = parseInt(document.getElementById('selectMonth').value);
+
+        let totalBdMin = 0;
+        let totalBdOcc = 0;
+        let critBdMin = 0;
+        let critBdOcc = 0;
+
+        let countGt98 = 0;
+        let count90to98 = 0;
+        let countLt90 = 0;
+
+        const numMachines = machineMaster.length;
+        const totalPlannedHrs = numMachines * 720;
+        const totalPlannedMin = totalPlannedHrs * 60;
+
+        let critMachineCount = 0;
+
+        machineMaster.forEach(mc => {
+            let mcBdMin = 0;
+            let mcOcc = 0;
+
+            breakdownLogs.forEach(l => {
+                const d = new Date(l.date);
+                if (l.mcName === mc.name && d.getFullYear() === year && d.getMonth() === month) {
+                    mcBdMin += Number(l.lossTime);
+                    mcOcc += 1;
+                }
+            });
+
+            totalBdMin += mcBdMin;
+            totalBdOcc += mcOcc;
+
+            if (mc.isCritical) {
+                critBdMin += mcBdMin;
+                critBdOcc += mcOcc;
+                critMachineCount++;
+            }
+
+            const plannedMin = 720 * 60;
+            const avail = plannedMin > 0 ? (((plannedMin - mcBdMin) / plannedMin) * 100) : 100;
+
+            if (avail >= 98) countGt98++;
+            else if (avail >= 90) count90to98++;
+            else countLt90++;
+        });
+
+        const overallBdHrs = (totalBdMin / 60).toFixed(2);
+        const overallAvail = totalPlannedMin > 0 ? (((totalPlannedMin - totalBdMin) / totalPlannedMin) * 100).toFixed(2) : "100.00";
+        const overallMttr = totalBdOcc > 0 ? ((totalBdMin / 60) / totalBdOcc).toFixed(2) : "0.00";
+        const overallMtbf = totalBdOcc > 0 ? (((totalPlannedHrs - (totalBdMin / 60)) / totalBdOcc)).toFixed(2) : totalPlannedHrs.toFixed(2);
+
+        const critPlannedHrs = critMachineCount * 720;
+        const critPlannedMin = critPlannedHrs * 60;
+        const critAvail = critPlannedMin > 0 ? (((critPlannedMin - critBdMin) / critPlannedMin) * 100).toFixed(2) : "100.00";
+        const critMttr = critBdOcc > 0 ? ((critBdMin / 60) / critBdOcc).toFixed(2) : "0.00";
+        const critMtbf = critBdOcc > 0 ? (((critPlannedHrs - (critBdMin / 60)) / critBdOcc)).toFixed(2) : critPlannedHrs.toFixed(2);
+
+        return {
+            overallBdHrs,
+            totalBdOcc,
+            overallAvail,
+            overallMttr,
+            overallMtbf,
+            critAvail,
+            critMttr,
+            critMtbf,
+            countGt98,
+            count90to98,
+            countLt90
+        };
+    }
+
+    function renderAvailabilityMatrix() {
+        const table = document.getElementById('availabilityMatrixTable');
+        if (!table) return;
+
+        const year = parseInt(document.getElementById('selectYear').value);
+        const month = parseInt(document.getElementById('selectMonth').value);
+        const daysInMonth = new Date(year, month + 1, 0).getDate();
+
+        let html = '<thead><tr><th rowspan="2">Sl. No</th><th rowspan="2">Machine Details</th><th style="background:#D9E1F2;">Day</th>';
+        for (let d = 1; d <= daysInMonth; d++) {
+            const dateObj = new Date(year, month, d);
+            const dd = String(d).padStart(2, '0');
+            const mmm = dateObj.toLocaleString('en-US', { month: 'short' });
+            const yy = String(year).slice(-2);
+            html += `<th class="vertical-date">${dd}-${mmm}-${yy}</th>`;
+        }
+        html += '<th rowspan="2">Cum. DT in Min.</th><th rowspan="2">Cum. DT in Hrs.</th><th rowspan="2">Cum. BD Occ</th><th rowspan="2">Planned Hrs</th><th rowspan="2">Mc Availability</th><th rowspan="2">MTTR</th><th rowspan="2">MTBF</th><th rowspan="2">Remarks</th></tr>';
+
+        html += '<tr><th style="background:#E2EFDA;">Week</th>';
+        for (let d = 1; d <= daysInMonth; d++) {
+            const dateObj = new Date(year, month, d);
+            html += `<th style="background:#E2EFDA;">Wk ${getContinuousWeekNumber(dateObj)}</th>`;
+        }
+        html += '</tr></thead><tbody>';
+
+        machineMaster.forEach((mc, idx) => {
+            const dailyBdMin = Array(daysInMonth).fill(0);
+            const dailyBdOcc = Array(daysInMonth).fill(0);
+            const dailyPlanned = Array(daysInMonth).fill(1440);
+            let remarks = [];
+
+            breakdownLogs.forEach(l => {
+                const d = new Date(l.date);
+                if (l.mcName === mc.name && d.getFullYear() === year && d.getMonth() === month) {
+                    const dayIdx = d.getDate() - 1;
+                    dailyBdMin[dayIdx] += Number(l.lossTime);
+                    dailyBdOcc[dayIdx] += 1;
+                    if (l.permAction && !remarks.includes(l.permAction)) remarks.push(l.permAction);
+                }
+            });
+
+            const mcBdMin = dailyBdMin.reduce((a, b) => a + b, 0);
+            const mcBdHrs = mcBdMin / 60;
+            const mcBdOcc = dailyBdOcc.reduce((a, b) => a + b, 0);
+            const mcPlannedHrs = 720;
+            const mcPlannedMin = mcPlannedHrs * 60;
+            const mcAvail = mcPlannedMin > 0 ? (((mcPlannedMin - mcBdMin) / mcPlannedMin) * 100) : 100;
+            const mttr = mcBdOcc > 0 ? (mcBdHrs / mcBdOcc) : 0;
+            const mtbf = mcBdOcc > 0 ? ((mcPlannedHrs - mcBdHrs) / mcBdOcc) : mcPlannedHrs;
+
+            const mcDetailDisplay = mc.mcNo ? `${mc.mcNo} - ${mc.name}` : mc.name;
+
+            html += `
+                <tr>
+                    <td rowspan="4"><b>${idx + 1}</b></td>
+                    <td rowspan="4" style="text-align:left; font-weight:bold;">${mcDetailDisplay}</td>
+                    <td><b>BD Min</b></td>
+            `;
+            for (let i = 0; i < daysInMonth; i++) {
+                const min = dailyBdMin[i];
+                html += min > 0 ? `<td class="bg-red">${min}</td>` : `<td></td>`;
+            }
+            const availBgClass = mcAvail >= 90 ? 'bg-green' : 'bg-red';
+            html += `
+                    <td rowspan="4"><b>${mcBdMin}</b></td>
+                    <td rowspan="4"><b>${mcBdHrs.toFixed(2)}</b></td>
+                    <td rowspan="4"><b>${mcBdOcc}</b></td>
+                    <td rowspan="4">${mcPlannedHrs}</td>
+                    <td rowspan="4" class="${availBgClass}">${mcAvail.toFixed(2)}%</td>
+                    <td rowspan="4">${mttr.toFixed(2)}</td>
+                    <td rowspan="4">${mtbf.toFixed(2)}</td>
+                    <td rowspan="4" style="text-align:left;">${remarks.join('; ')}</td>
+                </tr>
+                <tr>
+                    <td><b>BD Occ</b></td>
+            `;
+            for (let i = 0; i < daysInMonth; i++) {
+                const occ = dailyBdOcc[i];
+                const dateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(i + 1).padStart(2, '0')}`;
+                html += occ > 0 ? `<td class="bg-green clickable-occ" onclick="showIssuePopup('${mc.name}', '${dateStr}')" title="Click to view Nature of Issues">${occ}</td>` : `<td></td>`;
+            }
+            html += `</tr><tr><td><b># of shift</b></td>`;
+            for (let i = 0; i < daysInMonth; i++) {
+                html += `<td>1440</td>`;
+            }
+            html += `</tr><tr><td><b>%</b></td>`;
+            for (let i = 0; i < daysInMonth; i++) {
+                const p = dailyPlanned[i];
+                const b = dailyBdMin[i];
+                const pct = p > 0 ? (((p - b) / p) * 100) : 100;
+                html += `<td>${pct.toFixed(0)}</td>`;
+            }
+            html += `</tr>`;
+        });
+
+        html += '</tbody>';
+        table.innerHTML = html;
+    }
+
+    function renderKpiSummary() {
+        const table = document.getElementById('kpiSummaryTable');
+        if (!table) return;
+
+        const kpi = getKpiMetrics();
+
+        table.innerHTML = `
+            <tr><td class="bg-blue">Total BD Hrs</td><td><b>${kpi.overallBdHrs}</b></td></tr>
+            <tr><td class="bg-green">Total BD Occurance</td><td><b>${kpi.totalBdOcc}</b></td></tr>
+            <tr><td class="bg-blue">OVERALL MTTR</td><td><b>${kpi.overallMttr}</b></td></tr>
+            <tr><td class="bg-green">OVERALL MTBF</td><td><b>${kpi.overallMtbf}</b></td></tr>
+            <tr><td class="bg-blue">CRITICAL MCs MTTR</td><td><b>${kpi.critMttr}</b></td></tr>
+            <tr><td class="bg-green">CRITICAL MCs MTBF</td><td><b>${kpi.critMtbf}</b></td></tr>
+            <tr><td class="bg-blue">Overall Availability %</td><td><b>${kpi.overallAvail}%</b></td></tr>
+            <tr><td class="bg-orange">CRITICAL MCs Availability %</td><td><b>${kpi.critAvail}%</b></td></tr>
+            <tr><td class="bg-green">&gt; 98% availability</td><td><b>${kpi.countGt98}</b></td></tr>
+            <tr><td class="bg-green">90 - 98 % Availability</td><td><b>${kpi.count90to98}</b></td></tr>
+            <tr><td class="bg-green">&lt; 90 % Availability</td><td><b>${kpi.countLt90}</b></td></tr>
+        `;
+    }
+
+    function renderBreakdownTrend() {
+        const year = parseInt(document.getElementById('selectYear').value);
+        const month = parseInt(document.getElementById('selectMonth').value);
+        const daysInMonth = new Date(year, month + 1, 0).getDate();
+
+        const monthText = new Date(year, month, 1).toLocaleString('en-US', { month: 'short' }) + '-' + String(year).slice(-2);
+        document.getElementById('trendMonthYearText').innerText = monthText;
+
+        const metricOpt = document.getElementById('trendChartMetric')?.value || 'both';
+        const typeOpt = document.getElementById('trendChartType')?.value || 'bar';
+        const selectedMc = document.getElementById('trendChartMachine')?.value || '';
+        const showLabels = document.getElementById('trendShowLabels')?.checked ?? true;
+
+        const dailyTotalMin = Array(daysInMonth).fill(0);
+        const dailyTotalOcc = Array(daysInMonth).fill(0);
+
+        machineMaster.forEach(mc => {
+            if (selectedMc && mc.name !== selectedMc) return;
+            breakdownLogs.forEach(l => {
+                const d = new Date(l.date);
+                if (l.mcName === mc.name && d.getFullYear() === year && d.getMonth() === month) {
+                    const dayIdx = d.getDate() - 1;
+                    if (dayIdx >= 0 && dayIdx < daysInMonth) {
+                        dailyTotalMin[dayIdx] += Number(l.lossTime);
+                        dailyTotalOcc[dayIdx] += 1;
+                    }
+                }
+            });
+        });
+
+        // Total Breakdown Table
+        const totalTable = document.getElementById('trendTotalTable');
+        if (totalTable) {
+            let html = '<thead><tr style="background:#8EA9DB; color:#000;"><th>Total Breakdown Metric</th>';
+            for (let d = 1; d <= daysInMonth; d++) html += `<th>${d}</th>`;
+            html += '<th>Total</th></tr></thead><tbody>';
+
+            html += `<tr class="bg-red"><td>Total Breakdown Min</td>`;
+            for (let d = 0; d < daysInMonth; d++) html += `<td>${dailyTotalMin[d] || 0}</td>`;
+            html += `<td><b>${dailyTotalMin.reduce((a,b)=>a+b,0)}</b></td></tr>`;
+
+            html += `<tr class="bg-green"><td>Total Breakdown Occurrences</td>`;
+            for (let d = 0; d < daysInMonth; d++) html += `<td>${dailyTotalOcc[d] || 0}</td>`;
+            html += `<td><b>${dailyTotalOcc.reduce((a,b)=>a+b,0)}</b></td></tr>`;
+
+            html += '</tbody>';
+            totalTable.innerHTML = html;
+        }
+
+        // Machine Table
+        const mcTable = document.getElementById('trendMachineTable');
+        if (mcTable) {
+            let html = '<thead><tr style="background:#D9E1F2;"><th>Sl. No</th><th>Equipment Name</th><th>Metrics</th>';
+            for (let d = 1; d <= daysInMonth; d++) html += `<th>${d}</th>`;
+            html += '<th>Total</th></tr></thead><tbody>';
+
+            machineMaster.forEach((mc, idx) => {
+                const dailyMin = Array(daysInMonth).fill(0);
+                const dailyOcc = Array(daysInMonth).fill(0);
+
+                breakdownLogs.forEach(l => {
+                    const d = new Date(l.date);
+                    if (l.mcName === mc.name && d.getFullYear() === year && d.getMonth() === month) {
+                        const dayIdx = d.getDate() - 1;
+                        if (dayIdx >= 0 && dayIdx < daysInMonth) {
+                            dailyMin[dayIdx] += Number(l.lossTime);
+                            dailyOcc[dayIdx] += 1;
+                        }
+                    }
+                });
+
+                const mcTotMin = dailyMin.reduce((a,b)=>a+b,0);
+                const mcTotOcc = dailyOcc.reduce((a,b)=>a+b,0);
+
+                html += `
+                    <tr>
+                        <td rowspan="2"><b>${idx + 1}</b></td>
+                        <td rowspan="2" style="text-align:left; font-weight:bold;">${mc.name}</td>
+                        <td>BD Min</td>
+                `;
+                for (let d = 0; d < daysInMonth; d++) html += `<td>${dailyMin[d] > 0 ? dailyMin[d] : ''}</td>`;
+                html += `<td style="font-weight:bold;">${mcTotMin}</td></tr>`;
+
+                html += `<tr><td>BD Occ</td>`;
+                for (let d = 0; d < daysInMonth; d++) html += `<td>${dailyOcc[d] > 0 ? dailyOcc[d] : ''}</td>`;
+                html += `<td style="font-weight:bold;">${mcTotOcc}</td></tr>`;
+            });
+
+            html += '</tbody>';
+            mcTable.innerHTML = html;
+        }
+
+        // Chart Rendering on Canvas
+        const canvas = document.getElementById('trendCanvas');
+        if (!canvas) return;
+        const ctx = canvas.getContext('2d');
+        const W = canvas.width;
+        const H = canvas.height;
+
+        ctx.clearRect(0, 0, W, H);
+
+        const padL = 55;
+        const padR = (metricOpt === 'both') ? 55 : 25;
+        const padT = 45;
+        const padB = 40;
+
+        const chartW = W - padL - padR;
+        const chartH = H - padT - padB;
+
+        const maxMin = Math.max(10, ...dailyTotalMin) * 1.15;
+        const maxOcc = Math.max(5, ...dailyTotalOcc) * 1.15;
+
+        ctx.fillStyle = '#1f4e78';
+        ctx.font = 'bold 13px Segoe UI, sans-serif';
+        const chartTitle = selectedMc ? `Breakdown Trend Analysis - ${selectedMc}` : 'Overall Breakdown Trend Analysis (All Equipment)';
+        ctx.fillText(chartTitle, padL, 22);
+
+        ctx.strokeStyle = '#e2e8f0';
+        ctx.lineWidth = 1;
+        const gridRows = 5;
+        for (let i = 0; i <= gridRows; i++) {
+            const y = padT + (chartH / gridRows) * i;
+            ctx.beginPath();
+            ctx.moveTo(padL, y);
+            ctx.lineTo(W - padR, y);
+            ctx.stroke();
+
+            ctx.fillStyle = '#64748b';
+            ctx.font = '10px Segoe UI, sans-serif';
+            ctx.textAlign = 'right';
+            const valMin = Math.round(maxMin * (1 - i / gridRows));
+            if (metricOpt !== 'occ') {
+                ctx.fillText(valMin, padL - 6, y + 3);
+            }
+
+            if (metricOpt === 'both') {
+                ctx.textAlign = 'left';
+                const valOcc = Math.round(maxOcc * (1 - i / gridRows));
+                ctx.fillText(valOcc, W - padR + 6, y + 3);
+            }
+        }
+
+        ctx.textAlign = 'right';
+        ctx.font = 'bold 11px Segoe UI';
+        if (metricOpt === 'both' || metricOpt === 'min') {
+            ctx.fillStyle = '#d9534f';
+            ctx.fillRect(W - padR - 180, 10, 12, 12);
+            ctx.fillStyle = '#333';
+            ctx.fillText('BD Minutes', W - padR - 105, 20);
+        }
+        if (metricOpt === 'both' || metricOpt === 'occ') {
+            ctx.fillStyle = '#22c55e';
+            ctx.fillRect(W - padR - 80, 10, 12, 12);
+            ctx.fillStyle = '#333';
+            ctx.fillText('BD Occurrences', W - padR, 20);
+        }
+
+        const stepX = chartW / daysInMonth;
+
+        for (let i = 0; i < daysInMonth; i++) {
+            const cx = padL + i * stepX + stepX / 2;
+            
+            ctx.fillStyle = '#334155';
+            ctx.font = 'bold 10px Segoe UI';
+            ctx.textAlign = 'center';
+            ctx.fillText(`${i + 1}`, cx, H - padB + 16);
+
+            const minVal = dailyTotalMin[i];
+            const occVal = dailyTotalOcc[i];
+
+            if (typeOpt === 'bar') {
+                const barW = (metricOpt === 'both') ? Math.max(3, stepX * 0.35) : Math.max(4, stepX * 0.6);
+                
+                if (metricOpt === 'min' || metricOpt === 'both') {
+                    const bh = (minVal / maxMin) * chartH;
+                    const bx = (metricOpt === 'both') ? cx - barW : cx - barW / 2;
+                    const by = H - padB - bh;
+
+                    ctx.fillStyle = '#d9534f';
+                    ctx.fillRect(bx, by, barW, bh);
+
+                    if (showLabels && minVal > 0) {
+                        ctx.fillStyle = '#c9302c';
+                        ctx.font = 'bold 9px Segoe UI';
+                        ctx.fillText(minVal, bx + barW / 2, by - 4);
+                    }
+                }
+
+                if (metricOpt === 'occ' || metricOpt === 'both') {
+                    const bh = (occVal / maxOcc) * chartH;
+                    const bx = (metricOpt === 'both') ? cx : cx - barW / 2;
+                    const by = H - padB - bh;
+
+                    ctx.fillStyle = '#22c55e';
+                    ctx.fillRect(bx, by, barW, bh);
+
+                    if (showLabels && occVal > 0) {
+                        ctx.fillStyle = '#15803d';
+                        ctx.font = 'bold 9px Segoe UI';
+                        ctx.fillText(occVal, bx + barW / 2, by - 4);
+                    }
+                }
+            }
+        }
+
+        if (typeOpt === 'line' || typeOpt === 'area') {
+            if (metricOpt === 'min' || metricOpt === 'both') {
+                ctx.beginPath();
+                for (let i = 0; i < daysInMonth; i++) {
+                    const cx = padL + i * stepX + stepX / 2;
+                    const cy = H - padB - (dailyTotalMin[i] / maxMin) * chartH;
+                    if (i === 0) ctx.moveTo(cx, cy);
+                    else ctx.lineTo(cx, cy);
+                }
+
+                if (typeOpt === 'area') {
+                    ctx.lineTo(padL + (daysInMonth - 1) * stepX + stepX / 2, H - padB);
+                    ctx.lineTo(padL + stepX / 2, H - padB);
+                    ctx.closePath();
+                    ctx.fillStyle = 'rgba(217, 83, 79, 0.25)';
+                    ctx.fill();
+                }
+
+                ctx.strokeStyle = '#d9534f';
+                ctx.lineWidth = 2.5;
+                ctx.stroke();
+
+                for (let i = 0; i < daysInMonth; i++) {
+                    const cx = padL + i * stepX + stepX / 2;
+                    const cy = H - padB - (dailyTotalMin[i] / maxMin) * chartH;
+                    ctx.beginPath();
+                    ctx.arc(cx, cy, 3.5, 0, Math.PI * 2);
+                    ctx.fillStyle = '#d9534f';
+                    ctx.fill();
+
+                    if (showLabels && dailyTotalMin[i] > 0) {
+                        ctx.fillStyle = '#c9302c';
+                        ctx.font = 'bold 9px Segoe UI';
+                        ctx.textAlign = 'center';
+                        ctx.fillText(dailyTotalMin[i], cx, cy - 6);
+                    }
+                }
+            }
+
+            if (metricOpt === 'occ' || metricOpt === 'both') {
+                ctx.beginPath();
+                for (let i = 0; i < daysInMonth; i++) {
+                    const cx = padL + i * stepX + stepX / 2;
+                    const cy = H - padB - (dailyTotalOcc[i] / maxOcc) * chartH;
+                    if (i === 0) ctx.moveTo(cx, cy);
+                    else ctx.lineTo(cx, cy);
+                }
+
+                if (typeOpt === 'area') {
+                    ctx.lineTo(padL + (daysInMonth - 1) * stepX + stepX / 2, H - padB);
+                    ctx.lineTo(padL + stepX / 2, H - padB);
+                    ctx.closePath();
+                    ctx.fillStyle = 'rgba(34, 197, 94, 0.25)';
+                    ctx.fill();
+                }
+
+                ctx.strokeStyle = '#22c55e';
+                ctx.lineWidth = 2.5;
+                ctx.stroke();
+
+                for (let i = 0; i < daysInMonth; i++) {
+                    const cx = padL + i * stepX + stepX / 2;
+                    const cy = H - padB - (dailyTotalOcc[i] / maxOcc) * chartH;
+                    ctx.beginPath();
+                    ctx.arc(cx, cy, 3.5, 0, Math.PI * 2);
+                    ctx.fillStyle = '#22c55e';
+                    ctx.fill();
+
+                    if (showLabels && dailyTotalOcc[i] > 0) {
+                        ctx.fillStyle = '#15803d';
+                        ctx.font = 'bold 9px Segoe UI';
+                        ctx.textAlign = 'center';
+                        ctx.fillText(dailyTotalOcc[i], cx, cy - 6);
+                    }
+                }
+            }
+        }
+    }
+
+    function renderSparesTrend() {
+        const monthOpt = document.getElementById('sparesMonthSelect')?.value || 'all';
+        const yearOpt = document.getElementById('sparesYearSelect')?.value || 'all';
+        const yMaxOpt = document.getElementById('sparesYMaxSelect')?.value || '10';
+
+        const freqMap = {};
+
+        breakdownLogs.forEach(log => {
+            const d = new Date(log.date);
+            if (monthOpt !== 'all' && d.getMonth() !== parseInt(monthOpt)) return;
+            if (yearOpt !== 'all' && d.getFullYear() !== parseInt(yearOpt)) return;
+
+            if (log.spares && log.spares.trim() !== '') {
+                const items = log.spares.split(',');
+                items.forEach(rawItem => {
+                    let name = rawItem.trim();
+                    let qty = 1;
+                    const match = name.match(/(.*)\(Qty:\s*(\d+)\)/i);
+                    if (match) {
+                        name = match[1].trim();
+                        qty = parseInt(match[2]) || 1;
+                    }
+                    if (name) {
+                        freqMap[name] = (freqMap[name] || 0) + qty;
+                    }
+                });
+            }
+        });
+
+        const sortedSpares = Object.keys(freqMap).map(k => ({ name: k, count: freqMap[k] }))
+            .sort((a,b) => b.count - a.count);
+
+        const canvas = document.getElementById('sparesCanvas');
+        if (!canvas) return;
+        const ctx = canvas.getContext('2d');
+        const W = canvas.width;
+        const H = canvas.height;
+
+        ctx.clearRect(0, 0, W, H);
+
+        if (sortedSpares.length === 0) {
+            ctx.fillStyle = '#888';
+            ctx.font = '14px Segoe UI';
+            ctx.textAlign = 'center';
+            ctx.fillText('No spare consumption data available for the selected period.', W / 2, H / 2);
+        } else {
+            const padL = 60, padR = 30, padT = 30, padB = 70;
+            const chartW = W - padL - padR;
+            const chartH = H - padT - padB;
+
+            let maxVal = Math.max(...sortedSpares.map(s => s.count));
+            if (yMaxOpt !== 'auto') maxVal = Math.max(maxVal, parseInt(yMaxOpt));
+
+            const gridRows = 5;
+            ctx.strokeStyle = '#e2e8f0';
+            ctx.lineWidth = 1;
+            for (let i = 0; i <= gridRows; i++) {
+                const y = padT + (chartH / gridRows) * i;
+                ctx.beginPath();
+                ctx.moveTo(padL, y);
+                ctx.lineTo(W - padR, y);
+                ctx.stroke();
+
+                ctx.fillStyle = '#64748b';
+                ctx.font = '10px Segoe UI';
+                ctx.textAlign = 'right';
+                ctx.fillText(Math.round(maxVal * (1 - i / gridRows)), padL - 8, y + 3);
+            }
+
+            const barW = Math.min(40, (chartW / sortedSpares.length) * 0.65);
+            const stepX = chartW / sortedSpares.length;
+
+            sortedSpares.forEach((sp, idx) => {
+                const cx = padL + idx * stepX + stepX / 2;
+                const bh = (sp.count / maxVal) * chartH;
+                const bx = cx - barW / 2;
+                const by = H - padB - bh;
+
+                ctx.fillStyle = '#1f4e78';
+                ctx.fillRect(bx, by, barW, bh);
+
+                ctx.fillStyle = '#000';
+                ctx.font = 'bold 10px Segoe UI';
+                ctx.textAlign = 'center';
+                ctx.fillText(sp.count, cx, by - 5);
+
+                ctx.save();
+                ctx.translate(cx, H - padB + 10);
+                ctx.rotate(Math.PI / 6);
+                ctx.fillStyle = '#334155';
+                ctx.font = '11px Segoe UI';
+                ctx.textAlign = 'left';
+                ctx.fillText(sp.name, 0, 0);
+                ctx.restore();
+            });
+        }
+
+        const table = document.getElementById('sparesFrequencyTable');
+        if (table) {
+            let html = '<thead><tr style="background:#8EA9DB; color:#000;"><th>Sl. No</th><th>Spare Component Description</th><th>Total Quantity Consumed</th></tr></thead><tbody>';
+            if (sortedSpares.length === 0) {
+                html += '<tr><td colspan="3" style="color:#888;">No spares consumed.</td></tr>';
+            } else {
+                sortedSpares.forEach((sp, i) => {
+                    html += `<tr><td>${i + 1}</td><td style="text-align:left; font-weight:bold;">${sp.name}</td><td><b>${sp.count}</b></td></tr>`;
+                });
+            }
+            html += '</tbody>';
+            table.innerHTML = html;
+        }
+    }
+
+    function renderMachineComparison() {
+        const fromDate = document.getElementById('compareFromDate')?.value;
+        const fromTime = document.getElementById('compareFromTime')?.value || '00:00';
+        const toDate = document.getElementById('compareToDate')?.value;
+        const toTime = document.getElementById('compareToTime')?.value || '23:59';
+
+        const checkedBoxes = Array.from(document.querySelectorAll('#compareMachineCheckboxes input:checked')).map(cb => cb.value);
+
+        const compData = checkedBoxes.map(mcName => {
+            let dtMin = 0;
+            let occ = 0;
+
+            breakdownLogs.forEach(l => {
+                if (l.mcName !== mcName) return;
+                const lTime = l.time || '08:00';
+                const logDT = new Date(`${l.date}T${lTime}`);
+
+                if (fromDate) {
+                    const start = new Date(`${fromDate}T${fromTime}`);
+                    if (logDT < start) return;
+                }
+                if (toDate) {
+                    const end = new Date(`${toDate}T${toTime}`);
+                    if (logDT > end) return;
+                }
+
+                dtMin += Number(l.lossTime) || 0;
+                occ += 1;
+            });
+
+            return { name: mcName, dtMin, dtHrs: dtMin / 60, occ };
+        });
+
+        const canvas = document.getElementById('compareCanvas');
+        if (!canvas) return;
+        const ctx = canvas.getContext('2d');
+        const W = canvas.width;
+        const H = canvas.height;
+
+        ctx.clearRect(0, 0, W, H);
+
+        if (compData.length === 0) {
+            ctx.fillStyle = '#888';
+            ctx.font = '14px Segoe UI';
+            ctx.textAlign = 'center';
+            ctx.fillText('Select machines to compare.', W / 2, H / 2);
+        } else {
+            const padL = 60, padR = 60, padT = 30, padB = 60;
+            const chartW = W - padL - padR;
+            const chartH = H - padT - padB;
+
+            const maxHrs = Math.max(5, ...compData.map(d => d.dtHrs)) * 1.15;
+            const maxOcc = Math.max(5, ...compData.map(d => d.occ)) * 1.15;
+
+            const gridRows = 5;
+            ctx.strokeStyle = '#e2e8f0';
+            ctx.lineWidth = 1;
+
+            for (let i = 0; i <= gridRows; i++) {
+                const y = padT + (chartH / gridRows) * i;
+                ctx.beginPath();
+                ctx.moveTo(padL, y);
+                ctx.lineTo(W - padR, y);
+                ctx.stroke();
+
+                ctx.fillStyle = '#64748b';
+                ctx.font = '10px Segoe UI';
+                ctx.textAlign = 'right';
+                ctx.fillText((maxHrs * (1 - i / gridRows)).toFixed(1), padL - 8, y + 3);
+
+                ctx.textAlign = 'left';
+                ctx.fillText(Math.round(maxOcc * (1 - i / gridRows)), W - padR + 8, y + 3);
+            }
+
+            const stepX = chartW / compData.length;
+            const barW = Math.min(20, stepX * 0.3);
+
+            compData.forEach((d, idx) => {
+                const cx = padL + idx * stepX + stepX / 2;
+
+                const bhHrs = (d.dtHrs / maxHrs) * chartH;
+                ctx.fillStyle = '#d9534f';
+                ctx.fillRect(cx - barW, H - padB - bhHrs, barW, bhHrs);
+
+                const bhOcc = (d.occ / maxOcc) * chartH;
+                ctx.fillStyle = '#22c55e';
+                ctx.fillRect(cx, H - padB - bhOcc, barW, bhOcc);
+
+                ctx.fillStyle = '#334155';
+                ctx.font = 'bold 10px Segoe UI';
+                ctx.textAlign = 'center';
+                ctx.fillText(d.name, cx, H - padB + 16);
+            });
+        }
+
+        const table = document.getElementById('compareMetricsTable');
+        if (table) {
+            let html = '<thead><tr style="background:#8EA9DB; color:#000;"><th>Sl. No</th><th>Machine Name</th><th>Downtime (Minutes)</th><th>Downtime (Hours)</th><th>Occurrences</th></tr></thead><tbody>';
+            compData.forEach((d, i) => {
+                html += `<tr><td>${i + 1}</td><td style="text-align:left; font-weight:bold;">${d.name}</td><td>${d.dtMin}</td><td>${d.dtHrs.toFixed(2)}</td><td><b>${d.occ}</b></td></tr>`;
+            });
+            html += '</tbody>';
+            table.innerHTML = html;
+        }
+    }
+
+    function selectAllCompareMachines(select) {
+        document.querySelectorAll('#compareMachineCheckboxes input').forEach(cb => cb.checked = select);
+        renderMachineComparison();
+    }
+
+    function autoSetQuadrantThresholds() {
+        let totOcc = 0, totDt = 0, count = machineMaster.length;
+        machineMaster.forEach(m => {
+            let mOcc = 0, mDt = 0;
+            breakdownLogs.forEach(l => {
+                if (l.mcName === m.name) {
+                    mOcc++;
+                    mDt += Number(l.lossTime) || 0;
+                }
+            });
+            totOcc += mOcc;
+            totDt += mDt;
+        });
+        document.getElementById('thresholdOcc').value = Math.max(1, Math.round(totOcc / count));
+        document.getElementById('thresholdDt').value = Math.max(10, Math.round(totDt / count));
+        renderQuadrantProfiling();
+    }
+
+    function renderQuadrantProfiling() {
+        const fromDate = document.getElementById('quadrantFromDate')?.value;
+        const fromTime = document.getElementById('quadrantFromTime')?.value || '00:00';
+        const toDate = document.getElementById('quadrantToDate')?.value;
+        const toTime = document.getElementById('quadrantToTime')?.value || '23:59';
+        const mcFilter = document.getElementById('quadrantFilterMachine')?.value || '';
+
+        const threshOcc = parseInt(document.getElementById('thresholdOcc')?.value) || 2;
+        const threshDt = parseInt(document.getElementById('thresholdDt')?.value) || 30;
+
+        const quadData = machineMaster.filter(m => !mcFilter || m.name === mcFilter).map(m => {
+            let dtMin = 0;
+            let occ = 0;
+
+            breakdownLogs.forEach(l => {
+                if (l.mcName !== m.name) return;
+                const lTime = l.time || '08:00';
+                const logDT = new Date(`${l.date}T${lTime}`);
+
+                if (fromDate) {
+                    const start = new Date(`${fromDate}T${fromTime}`);
+                    if (logDT < start) return;
+                }
+                if (toDate) {
+                    const end = new Date(`${toDate}T${toTime}`);
+                    if (logDT > end) return;
+                }
+
+                dtMin += Number(l.lossTime) || 0;
+                occ += 1;
+            });
+
+            let quad = 4;
+            if (occ >= threshOcc && dtMin >= threshDt) quad = 1;
+            else if (occ < threshOcc && dtMin >= threshDt) quad = 2;
+            else if (occ >= threshOcc && dtMin < threshDt) quad = 3;
+            else quad = 4;
+
+            return { name: m.name, occ, dtMin, quad };
+        });
+
+        const q1List = quadData.filter(d => d.quad === 1);
+        const q2List = quadData.filter(d => d.quad === 2);
+        const q3List = quadData.filter(d => d.quad === 3);
+        const q4List = quadData.filter(d => d.quad === 4);
+
+        document.getElementById('q1Count').innerText = q1List.length;
+        document.getElementById('q2Count').innerText = q2List.length;
+        document.getElementById('q3Count').innerText = q3List.length;
+        document.getElementById('q4Count').innerText = q4List.length;
+
+        const renderListHtml = (list) => {
+            if (list.length === 0) return '<div style="font-size:11px; color:#aaa; font-style:italic;">No machines in this quadrant.</div>';
+            return list.map(item => `
+                <div class="q-item">
+                    <b>${item.name}</b>
+                    <span>Occ: <b>${item.occ}</b> | DT: <b>${item.dtMin}m</b></span>
+                </div>
+            `).join('');
+        };
+
+        document.getElementById('q1List').innerHTML = renderListHtml(q1List);
+        document.getElementById('q2List').innerHTML = renderListHtml(q2List);
+        document.getElementById('q3List').innerHTML = renderListHtml(q3List);
+        document.getElementById('q4List').innerHTML = renderListHtml(q4List);
+
+        const canvas = document.getElementById('quadrantCanvas');
+        if (!canvas) return;
+        const ctx = canvas.getContext('2d');
+        const W = canvas.width;
+        const H = canvas.height;
+
+        ctx.clearRect(0, 0, W, H);
+
+        const padL = 60, padR = 30, padT = 30, padB = 50;
+        const chartW = W - padL - padR;
+        const chartH = H - padT - padB;
+
+        const maxOcc = Math.max(threshOcc * 2, ...quadData.map(d => d.occ)) + 1;
+        const maxDt = Math.max(threshDt * 2, ...quadData.map(d => d.dtMin)) + 10;
+
+        const splitX = padL + (threshOcc / maxOcc) * chartW;
+        const splitY = H - padB - (threshDt / maxDt) * chartH;
+
+        ctx.fillStyle = '#fff5f5'; ctx.fillRect(splitX, padT, W - padR - splitX, splitY - padT);
+        ctx.fillStyle = '#fffaf0'; ctx.fillRect(padL, padT, splitX - padL, splitY - padT);
+        ctx.fillStyle = '#f0f8ff'; ctx.fillRect(splitX, splitY, W - padR - splitX, H - padB - splitY);
+        ctx.fillStyle = '#f5fff5'; ctx.fillRect(padL, splitY, splitX - padL, H - padB - splitY);
+
+        ctx.strokeStyle = '#d9534f';
+        ctx.lineWidth = 1.5;
+        ctx.setLineDash([4, 4]);
+
+        ctx.beginPath(); ctx.moveTo(splitX, padT); ctx.lineTo(splitX, H - padB); ctx.stroke();
+        ctx.beginPath(); ctx.moveTo(padL, splitY); ctx.lineTo(W - padR, splitY); ctx.stroke();
+        ctx.setLineDash([]);
+
+        ctx.strokeStyle = '#cbd5e1';
+        ctx.lineWidth = 1;
+        ctx.strokeRect(padL, padT, chartW, chartH);
+
+        ctx.fillStyle = '#334155'; ctx.font = 'bold 11px Segoe UI'; ctx.textAlign = 'center';
+        ctx.fillText('Breakdown Occurrences (Frequency)', padL + chartW / 2, H - 12);
+
+        ctx.save();
+        ctx.translate(15, padT + chartH / 2);
+        ctx.rotate(-Math.PI / 2);
+        ctx.fillText('Downtime Loss (Minutes)', 0, 0);
+        ctx.restore();
+
+        quadData.forEach(d => {
+            const cx = padL + (d.occ / maxOcc) * chartW;
+            const cy = H - padB - (d.dtMin / maxDt) * chartH;
+
+            ctx.beginPath();
+            ctx.arc(cx, cy, 6, 0, Math.PI * 2);
+            ctx.fillStyle = d.quad === 1 ? '#d9534f' : d.quad === 2 ? '#f0ad4e' : d.quad === 3 ? '#337ab7' : '#5cb85c';
+            ctx.fill();
+            ctx.strokeStyle = '#fff';
+            ctx.lineWidth = 1.5;
+            ctx.stroke();
+
+            ctx.fillStyle = '#111';
+            ctx.font = '10px Segoe UI';
+            ctx.textAlign = 'left';
+            ctx.fillText(d.name, cx + 8, cy + 3);
+        });
+    }
+
+    function exportBreakdownLogExcel() {
+        const wb = new ExcelJS.Workbook();
+        const ws = wb.addWorksheet('Breakdown Log');
+
+        ws.columns = [
+            { header: 'Sl.No', key: 'sl', width: 8 },
+            { header: 'Date', key: 'date', width: 12 },
+            { header: 'Shift', key: 'shift', width: 8 },
+            { header: 'Operating Time (min)', key: 'opTime', width: 18 },
+            { header: 'Machine Name', key: 'mcName', width: 22 },
+            { header: 'Machine No', key: 'mcNo', width: 15 },
+            { header: 'Nature of Issue', key: 'issue', width: 30 },
+            { header: 'Type (M/E)', key: 'typeIssue', width: 10 },
+            { header: 'Loss Time (min)', key: 'lossTime', width: 15 },
+            { header: 'Status', key: 'status', width: 10 },
+            { header: 'Immediate Action', key: 'immAction', width: 25 },
+            { header: 'Permanent Action', key: 'permAction', width: 25 },
+            { header: 'Counter Measure', key: 'counterMeasure', width: 25 },
+            { header: 'Shift Engineer', key: 'shiftEng', width: 20 },
+            { header: 'Spares Details', key: 'spares', width: 25 },
+            { header: 'PCA Engineer', key: 'respEng', width: 20 },
+            { header: 'PCA Status', key: 'pcaStatus', width: 12 }
+        ];
+
+        const year = parseInt(document.getElementById('selectYear').value);
+        const month = parseInt(document.getElementById('selectMonth').value);
+
+        let sl = 1;
+        breakdownLogs.forEach(l => {
+            const d = new Date(l.date);
+            if (d.getFullYear() === year && d.getMonth() === month) {
+                ws.addRow({
+                    sl: sl++,
+                    date: l.date,
+                    shift: l.shift,
+                    opTime: l.opTime,
+                    mcName: l.mcName,
+                    mcNo: l.mcNo,
+                    issue: l.issue,
+                    typeIssue: l.typeIssue,
+                    lossTime: l.lossTime,
+                    status: l.status,
+                    immAction: l.immAction,
+                    permAction: l.permAction,
+                    counterMeasure: l.counterMeasure,
+                    shiftEng: l.shiftEng,
+                    spares: l.spares,
+                    respEng: l.respEng,
+                    pcaStatus: l.pcaStatus
+                });
+            }
+        });
+
+        wb.xlsx.writeBuffer().then(buffer => {
+            saveAs(new Blob([buffer]), `Breakdown_Log_${month+1}_${year}.xlsx`);
+        });
+    }
+
+    function exportAvailabilityExcel() {
+        const wb = new ExcelJS.Workbook();
+        const ws = wb.addWorksheet('Availability Matrix');
+
+        const year = parseInt(document.getElementById('selectYear').value);
+        const month = parseInt(document.getElementById('selectMonth').value);
+        const daysInMonth = new Date(year, month + 1, 0).getDate();
+
+        const headers = ['Sl.No', 'Machine Details', 'Metric'];
+        for (let d = 1; d <= daysInMonth; d++) headers.push(`${d}`);
+        headers.push('Cum. DT (Min)', 'Cum. DT (Hrs)', 'BD Occ', 'Planned Hrs', 'Availability %');
+
+        ws.addRow(headers);
+
+        machineMaster.forEach((mc, idx) => {
+            const dailyBdMin = Array(daysInMonth).fill(0);
+            const dailyBdOcc = Array(daysInMonth).fill(0);
+
+            breakdownLogs.forEach(l => {
+                const d = new Date(l.date);
+                if (l.mcName === mc.name && d.getFullYear() === year && d.getMonth() === month) {
+                    const dayIdx = d.getDate() - 1;
+                    dailyBdMin[dayIdx] += Number(l.lossTime);
+                    dailyBdOcc[dayIdx] += 1;
+                }
+            });
+
+            const mcBdMin = dailyBdMin.reduce((a, b) => a + b, 0);
+            const mcBdHrs = mcBdMin / 60;
+            const mcBdOcc = dailyBdOcc.reduce((a, b) => a + b, 0);
+            const mcAvail = (((720 * 60 - mcBdMin) / (720 * 60)) * 100).toFixed(2);
+
+            ws.addRow([idx + 1, mc.name, 'BD Min', ...dailyBdMin, mcBdMin, mcBdHrs.toFixed(2), mcBdOcc, 720, `${mcAvail}%`]);
+            ws.addRow(['', '', 'BD Occ', ...dailyBdOcc, '', '', '', '', '']);
+        });
+
+        wb.xlsx.writeBuffer().then(buffer => {
+            saveAs(new Blob([buffer]), `Availability_Matrix_${month+1}_${year}.xlsx`);
+        });
+    }
+
+    function exportBreakdownTrendExcel() {
+        const wb = new ExcelJS.Workbook();
+        const ws = wb.addWorksheet('Breakdown Trend');
+
+        const year = parseInt(document.getElementById('selectYear').value);
+        const month = parseInt(document.getElementById('selectMonth').value);
+        const daysInMonth = new Date(year, month + 1, 0).getDate();
+
+        const headers = ['Sl.No', 'Equipment Name', 'Metric'];
+        for (let d = 1; d <= daysInMonth; d++) headers.push(`${d}`);
+        headers.push('Total');
+
+        ws.addRow(headers);
+
+        machineMaster.forEach((mc, idx) => {
+            const dailyMin = Array(daysInMonth).fill(0);
+            const dailyOcc = Array(daysInMonth).fill(0);
+
+            breakdownLogs.forEach(l => {
+                const d = new Date(l.date);
+                if (l.mcName === mc.name && d.getFullYear() === year && d.getMonth() === month) {
+                    const dayIdx = d.getDate() - 1;
+                    dailyMin[dayIdx] += Number(l.lossTime);
+                    dailyOcc[dayIdx] += 1;
+                }
+            });
+
+            ws.addRow([idx + 1, mc.name, 'BD Min', ...dailyMin, dailyMin.reduce((a,b)=>a+b,0)]);
+            ws.addRow(['', '', 'BD Occ', ...dailyOcc, dailyOcc.reduce((a,b)=>a+b,0)]);
+        });
+
+        wb.xlsx.writeBuffer().then(buffer => {
+            saveAs(new Blob([buffer]), `Breakdown_Trend_${month+1}_${year}.xlsx`);
+        });
+    }
+
+    function exportMachineComparisonExcel() {
+        const wb = new ExcelJS.Workbook();
+        const ws = wb.addWorksheet('Machine Comparison');
+
+        ws.columns = [
+            { header: 'Sl.No', key: 'sl', width: 8 },
+            { header: 'Machine Name', key: 'name', width: 25 },
+            { header: 'Downtime (Min)', key: 'dtMin', width: 15 },
+            { header: 'Downtime (Hrs)', key: 'dtHrs', width: 15 },
+            { header: 'Occurrences', key: 'occ', width: 15 }
+        ];
+
+        const checkedBoxes = Array.from(document.querySelectorAll('#compareMachineCheckboxes input:checked')).map(cb => cb.value);
+
+        checkedBoxes.forEach((mcName, idx) => {
+            let dtMin = 0, occ = 0;
+            breakdownLogs.forEach(l => {
+                if (l.mcName === mcName) {
+                    dtMin += Number(l.lossTime) || 0;
+                    occ += 1;
+                }
+            });
+            ws.addRow({ sl: idx + 1, name: mcName, dtMin, dtHrs: (dtMin/60).toFixed(2), occ });
+        });
+
+        wb.xlsx.writeBuffer().then(buffer => {
+            saveAs(new Blob([buffer]), `Machine_Comparison.xlsx`);
+        });
+    }
+
+    function exportQuadrantProfilingExcel() {
+        const wb = new ExcelJS.Workbook();
+        const ws = wb.addWorksheet('Quadrant Profiling');
+
+        ws.columns = [
+            { header: 'Sl.No', key: 'sl', width: 8 },
+            { header: 'Machine Name', key: 'name', width: 25 },
+            { header: 'Occurrences', key: 'occ', width: 15 },
+            { header: 'Downtime (Min)', key: 'dtMin', width: 15 },
+            { header: 'Quadrant Category', key: 'quad', width: 35 }
+        ];
+
+        const threshOcc = parseInt(document.getElementById('thresholdOcc')?.value) || 2;
+        const threshDt = parseInt(document.getElementById('thresholdDt')?.value) || 30;
+
+        machineMaster.forEach((m, idx) => {
+            let dtMin = 0, occ = 0;
+            breakdownLogs.forEach(l => {
+                if (l.mcName === m.name) {
+                    dtMin += Number(l.lossTime) || 0;
+                    occ += 1;
+                }
+            });
+
+            let quadStr = "Quadrant 4: Low Occ / Low DT";
+            if (occ >= threshOcc && dtMin >= threshDt) quadStr = "Quadrant 1: High Occ / High DT";
+            else if (occ < threshOcc && dtMin >= threshDt) quadStr = "Quadrant 2: Low Occ / High DT";
+            else if (occ >= threshOcc && dtMin < threshDt) quadStr = "Quadrant 3: High Occ / Low DT";
+
+            ws.addRow({ sl: idx + 1, name: m.name, occ, dtMin, quad: quadStr });
+        });
+
+        wb.xlsx.writeBuffer().then(buffer => {
+            saveAs(new Blob([buffer]), `Quadrant_Profiling.xlsx`);
+        });
+    }
+
+    function downloadSelectedReport() {
+        const sel = document.getElementById('singleReportSelect').value;
+        if (sel === 'trend') exportBreakdownTrendExcel();
+        else if (sel === 'availability') exportAvailabilityExcel();
+        else if (sel === 'logs') exportBreakdownLogExcel();
+        else if (sel === 'quadrant') exportQuadrantProfilingExcel();
+        else if (sel === 'json') openExportBackupModal();
+    }
+
+    function sendEmailViaWebGmail() {
+        const toInputs = Array.from(document.querySelectorAll('.emailToInput')).map(i => i.value.trim()).filter(Boolean);
+        const ccInputs = Array.from(document.querySelectorAll('.emailCcInput')).map(i => i.value.trim()).filter(Boolean);
+        const subject = encodeURIComponent(document.getElementById('emailSubject').value);
+
+        if (toInputs.length === 0) {
+            alert('Please enter at least one Recipient (To) Email Address.');
+            return;
+        }
+
+        const toStr = toInputs.join(',');
+        const ccStr = ccInputs.length > 0 ? `&cc=${ccInputs.join(',')}` : '';
+
+        const m = parseInt(document.getElementById('modalReportMonth').value);
+        const y = document.getElementById('modalReportYear').value;
+        const monthNames = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
+
+        const bodyText = encodeURIComponent(
+            `Hi Team,\n\nPlease find attached the Equipment Breakdown & Availability Management System Status Report for ${monthNames[m]} ${y}.\n\n` +
+            `Summary Highlights:\n` +
+            `- Total Plant Breakdown Hours & MTTR/MTBF Analysis\n` +
+            `- Machine Availability Matrix & Trend Sheet\n` +
+            `- Spare Consumption Frequency Breakdown\n\n` +
+            `Best regards,\n` +
+            `Maintenance & Operations Engineering Team`
+        );
+
+        const gmailUrl = `https://mail.google.com/mail/?view=cm&fs=1&to=${toStr}${ccStr}&su=${subject}&body=${bodyText}`;
+        window.open(gmailUrl, '_blank');
+    }
+</script>
+</body>
+</html>
