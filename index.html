@@ -80,7 +80,7 @@
         .tab-content { display: none; background: #fff; padding: 15px; border-radius: 0 0 8px 8px; box-shadow: 0 2px 5px rgba(0,0,0,0.1); }
         .tab-content.active { display: block; }
 
-        .table-wrap { overflow-x: auto; max-height: 650px; }
+        .table-wrap { overflow: auto; max-height: 650px; }
         table { border-collapse: collapse; width: 100%; font-size: 11px; text-align: center; }
         th, td { border: 1px solid var(--border-gray); padding: 5px; white-space: nowrap; }
         th { background-color: #f2f2f2; position: sticky; top: 0; z-index: 2; font-weight: bold; }
@@ -91,8 +91,8 @@
             height: 75px;
         }
 
-        .bg-green { background-color: #92D050 !important; font-weight: bold; }
-        .bg-yellow { background-color: #FFFF00 !important; font-weight: bold; }
+        .bg-green { background-color: #92D050 !important; color: #000; font-weight: bold; }
+        .bg-yellow { background-color: #FFFF00 !important; color: #000; font-weight: bold; }
         .bg-blue { background-color: #00B0F0 !important; color: white; font-weight: bold; }
         .bg-orange { background-color: #F8CBAD !important; font-weight: bold; }
         .bg-red { background-color: #FFC7CE !important; color: #9C0006; font-weight: bold; }
@@ -124,7 +124,7 @@
             width: 100%;
         }
 
-        .kpi-table { width: 420px; margin-top: 20px; font-size: 12px; }
+        .kpi-table { width: 450px; margin-top: 20px; font-size: 12px; }
         .kpi-table td { padding: 6px 12px; }
         .filter-bar { display: flex; gap: 12px; margin-bottom: 12px; align-items: center; background: #f8f9fa; padding: 10px; border-radius: 6px; flex-wrap: wrap; }
 
@@ -133,7 +133,15 @@
         .doc-header-title { font-size: 16px; font-weight: bold; letter-spacing: 1px; }
         .logo-cell { display: flex; align-items: center; justify-content: center; padding: 4px; }
         .logo-cell img { height: 50px; width: auto; object-fit: contain; }
-        .trend-canvas-container { overflow-x: auto; margin-bottom: 15px; background: #fff; border: 1px solid #000; padding: 10px; }
+        
+        .trend-canvas-container { 
+            overflow: auto; 
+            max-height: 450px;
+            margin-bottom: 15px; 
+            background: #fff; 
+            border: 1px solid #000; 
+            padding: 10px; 
+        }
         
         .compare-checkbox-grid {
             display: grid;
@@ -195,16 +203,6 @@
             gap: 6px;
             max-height: 250px;
             overflow-y: auto;
-        }
-        .q-item {
-            background: #fff;
-            border: 1px solid #ddd;
-            padding: 6px 10px;
-            border-radius: 4px;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            font-size: 11px;
         }
 
         .email-form-section {
@@ -476,6 +474,16 @@
                 <option value="">All Equipment (Total Trend)</option>
             </select>
 
+            <label style="margin-left:8px;"><b>Max Loss Time Axis Range (Mins):</b></label>
+            <select id="trendMaxMinSelect" onchange="renderBreakdownTrend()">
+                <option value="auto" selected>Auto Adjust</option>
+                <option value="100">100 Mins</option>
+                <option value="300">300 Mins</option>
+                <option value="500">500 Mins</option>
+                <option value="1000">1000 Mins</option>
+                <option value="2000">2000 Mins</option>
+            </select>
+
             <label style="margin-left:8px; cursor:pointer;" class="checkbox-label">
                 <input type="checkbox" id="trendShowLabels" checked onchange="renderBreakdownTrend()">
                 <span>Show Data Labels</span>
@@ -532,8 +540,8 @@
             <button class="btn-primary" onclick="renderSparesTrend()">🔄 Refresh Chart</button>
         </div>
 
-        <div class="trend-canvas-container" style="margin-top:10px;">
-            <canvas id="sparesCanvas" width="1200" height="360"></canvas>
+        <div class="trend-canvas-container" style="margin-top:10px; max-height: 260px;">
+            <canvas id="sparesCanvas" width="1200" height="220"></canvas>
         </div>
 
         <div class="table-wrap" style="margin-top: 15px;">
@@ -557,6 +565,23 @@
                     <input type="date" id="compareToDate" onchange="renderMachineComparison()">
                     <label><b>Time:</b></label>
                     <input type="time" id="compareToTime" value="23:59" onchange="renderMachineComparison()">
+
+                    <label style="margin-left:8px;"><b>Y-Axis Units:</b></label>
+                    <select id="compareUnitSelect" onchange="renderMachineComparison()">
+                        <option value="both" selected>Both (Mins & Hrs)</option>
+                        <option value="hrs">Hours Only</option>
+                        <option value="mins">Minutes Only</option>
+                    </select>
+
+                    <label style="margin-left:8px;"><b>Max Range Limit:</b></label>
+                    <select id="compareMaxMinSelect" onchange="renderMachineComparison()">
+                        <option value="auto" selected>Auto Adjust</option>
+                        <option value="5">5 Hrs / 300 Mins</option>
+                        <option value="10">10 Hrs / 600 Mins</option>
+                        <option value="20">20 Hrs / 1200 Mins</option>
+                        <option value="50">50 Hrs / 3000 Mins</option>
+                        <option value="100">100 Hrs / 6000 Mins</option>
+                    </select>
                 </div>
             </div>
 
@@ -572,9 +597,10 @@
         </div>
 
         <div style="margin-top:15px; background:#fff; padding:15px; border:1px solid var(--border-gray); border-radius:6px;">
-            <h4 style="margin:0 0 10px 0; color:var(--primary-blue);">Machine Breakdown Hours & Occurrences Comparison</h4>
-            <div class="trend-canvas-container" style="border:none; padding:0;">
-                <canvas id="compareCanvas" width="1200" height="320"></canvas>
+            <h4 style="margin:0 0 10px 0; color:var(--primary-blue);">Machine Breakdown Hours & Occurrences Comparison Chart (Scrollable X & Y Axis)</h4>
+            <!-- Scrollable X and Y Canvas wrapper -->
+            <div class="trend-canvas-container" style="border:1px solid #ccc; max-height:480px; overflow:auto;">
+                <canvas id="compareCanvas" width="1800" height="420"></canvas>
             </div>
         </div>
 
@@ -1964,8 +1990,8 @@
             }
             html += `</tr>`;
 
-            // Row 3: Operating Time Capacity
-            html += `<tr><td><b># of shift</b></td>`;
+            // Row 3: Shift capacity
+            html += `<tr><td><b>Total shift hours</b></td>`;
             for (let i = 0; i < daysInMonth; i++) html += `<td>1440</td>`;
             html += `</tr>`;
 
@@ -1983,6 +2009,25 @@
         table.innerHTML = html;
     }
 
+    // Helper function for metric KPI Color Coding
+    function getKpiColorClass(metricType, value) {
+        const val = parseFloat(value);
+        if (metricType === 'avail') {
+            if (val >= 95) return 'bg-green';
+            if (val >= 90) return 'bg-yellow';
+            return 'bg-red';
+        } else if (metricType === 'mttr') {
+            if (val <= 2.0) return 'bg-green';
+            if (val <= 4.0) return 'bg-yellow';
+            return 'bg-red';
+        } else if (metricType === 'mtbf') {
+            if (val >= 48.0) return 'bg-green';
+            if (val >= 24.0) return 'bg-yellow';
+            return 'bg-red';
+        }
+        return '';
+    }
+
     function renderKpiSummary() {
         const table = document.getElementById('kpiSummaryTable');
         if (!table) return;
@@ -1993,12 +2038,12 @@
             <tr style="background:#f2f2f2;"><th>KPI Metric</th><th>Value</th></tr>
             <tr><td>Total Breakdown Hours</td><td><b>${kpi.overallBdHrs} Hrs</b></td></tr>
             <tr><td>Total Breakdown Occurrences</td><td><b>${kpi.totalBdOcc}</b></td></tr>
-            <tr><td>Overall Machine Availability</td><td class="${kpi.overallAvail >= 90 ? 'bg-green' : 'bg-red'}"><b>${kpi.overallAvail}%</b></td></tr>
-            <tr><td>Overall MTTR</td><td><b>${kpi.overallMttr} Hrs</b></td></tr>
-            <tr><td>Overall MTBF</td><td><b>${kpi.overallMtbf} Hrs</b></td></tr>
-            <tr><td>Critical Machines Availability</td><td class="${kpi.critAvail >= 90 ? 'bg-green' : 'bg-red'}"><b>${kpi.critAvail}%</b></td></tr>
-            <tr><td>Critical Machines MTTR</td><td><b>${kpi.critMttr} Hrs</b></td></tr>
-            <tr><td>Critical Machines MTBF</td><td><b>${kpi.critMtbf} Hrs</b></td></tr>
+            <tr><td>Overall Machine Availability</td><td class="${getKpiColorClass('avail', kpi.overallAvail)}"><b>${kpi.overallAvail}%</b></td></tr>
+            <tr><td>Overall MTTR</td><td class="${getKpiColorClass('mttr', kpi.overallMttr)}"><b>${kpi.overallMttr} Hrs</b></td></tr>
+            <tr><td>Overall MTBF</td><td class="${getKpiColorClass('mtbf', kpi.overallMtbf)}"><b>${kpi.overallMtbf} Hrs</b></td></tr>
+            <tr><td>Critical Machines Availability</td><td class="${getKpiColorClass('avail', kpi.critAvail)}"><b>${kpi.critAvail}%</b></td></tr>
+            <tr><td>Critical Machines MTTR</td><td class="${getKpiColorClass('mttr', kpi.critMttr)}"><b>${kpi.critMttr} Hrs</b></td></tr>
+            <tr><td>Critical Machines MTBF</td><td class="${getKpiColorClass('mtbf', kpi.critMtbf)}"><b>${kpi.critMtbf} Hrs</b></td></tr>
             <tr><td>Machines with Availability ≥ 98%</td><td><b>${kpi.countGt98}</b></td></tr>
             <tr><td>Machines with Availability 90% - 98%</td><td><b>${kpi.count90to98}</b></td></tr>
             <tr><td>Machines with Availability < 90%</td><td><b>${kpi.countLt90}</b></td></tr>
@@ -2209,7 +2254,21 @@
         document.getElementById('emailModal').style.display = 'none';
     }
 
-    function downloadSelectedFeatureExcel() {
+    // Auto Column Width Adjuster Helper for ExcelJS
+    function autoFitColumnWidths(sheet) {
+        sheet.columns.forEach(column => {
+            let maxLength = 0;
+            column.eachCell({ includeEmpty: true }, cell => {
+                const columnLength = cell.value ? cell.value.toString().length : 8;
+                if (columnLength > maxLength) {
+                    maxLength = columnLength;
+                }
+            });
+            column.width = Math.max(maxLength + 4, 10);
+        });
+    }
+
+    async function downloadSelectedFeatureExcel() {
         const selectedFeature = document.getElementById('modalFeatureSelect').value;
         const monthVal = parseInt(document.getElementById('modalReportMonth').value);
         const yearVal = parseInt(document.getElementById('modalReportYear').value);
@@ -2222,23 +2281,23 @@
         if (selectedFeature === 'breakdown') {
             const sheet = workbook.addWorksheet('Breakdown Logs');
             sheet.columns = [
-                { header: 'Sl.No', key: 'sl', width: 8 },
-                { header: 'Date', key: 'date', width: 12 },
-                { header: 'Shift', key: 'shift', width: 8 },
-                { header: 'Operating Time (min)', key: 'opTime', width: 20 },
-                { header: 'Machine Name', key: 'mcName', width: 22 },
-                { header: 'Machine Number', key: 'mcNo', width: 15 },
-                { header: 'Nature of Issue', key: 'issue', width: 30 },
-                { header: 'Type (M/E)', key: 'typeIssue', width: 12 },
-                { header: 'Loss Time (min)', key: 'lossTime', width: 15 },
-                { header: 'Status', key: 'status', width: 10 },
-                { header: 'Immediate Action', key: 'immAction', width: 25 },
-                { header: 'Permanent Action', key: 'permAction', width: 25 },
-                { header: 'Counter Measure', key: 'counterMeasure', width: 25 },
-                { header: 'Shift Engineer', key: 'shiftEng', width: 20 },
-                { header: 'Spares Consumed', key: 'spares', width: 25 },
-                { header: 'PCA Responsibility', key: 'respEng', width: 20 },
-                { header: 'PCA Status', key: 'pcaStatus', width: 15 }
+                { header: 'Sl.No', key: 'sl' },
+                { header: 'Date', key: 'date' },
+                { header: 'Shift', key: 'shift' },
+                { header: 'Operating Time (min)', key: 'opTime' },
+                { header: 'Machine Name', key: 'mcName' },
+                { header: 'Machine Number', key: 'mcNo' },
+                { header: 'Nature of Issue', key: 'issue' },
+                { header: 'Type (M/E)', key: 'typeIssue' },
+                { header: 'Loss Time (min)', key: 'lossTime' },
+                { header: 'Status', key: 'status' },
+                { header: 'Immediate Action', key: 'immAction' },
+                { header: 'Permanent Action', key: 'permAction' },
+                { header: 'Counter Measure', key: 'counterMeasure' },
+                { header: 'Shift Engineer', key: 'shiftEng' },
+                { header: 'Spares Consumed', key: 'spares' },
+                { header: 'PCA Responsibility', key: 'respEng' },
+                { header: 'PCA Status', key: 'pcaStatus' }
             ];
 
             let count = 0;
@@ -2267,6 +2326,8 @@
                     });
                 }
             });
+            autoFitColumnWidths(sheet);
+
         } else if (selectedFeature === 'availability') {
             const sheet = workbook.addWorksheet('Availability Matrix');
             const daysInMonth = new Date(yearVal, monthVal + 1, 0).getDate();
@@ -2280,7 +2341,7 @@
                 const yy = String(yearVal).slice(-2);
                 row1.push(`${dd}-${mmm}-${yy}`);
             }
-            row1.push('Cum. DT in Min.', 'Cum. DT in Hrs.', 'Cum. BD Occ', 'Planned Hrs', 'Mc Availability', 'MTTR', 'MTBF', 'Remarks');
+            row1.push('Cum. DT in Min.', 'Cum. DT in Hrs.', 'Cum. BD Occ', 'Planned Hrs', 'Mc Availability', 'MTTR (Hrs)', 'MTBF (Hrs)', 'Remarks');
             sheet.addRow(row1);
 
             // Row 2: Week Header
@@ -2313,7 +2374,7 @@
                 });
             }
 
-            // Populate Machine Rows
+            // Populate Machine Data Rows under CUMBD, MTTR, MTBF
             let currentRow = 3;
             machineMaster.forEach((mc, idx) => {
                 const dailyBdMin = Array(daysInMonth).fill(0);
@@ -2355,7 +2416,6 @@
                 for (let i = 0; i < daysInMonth; i++) r2.push(dailyBdOcc[i] > 0 ? dailyBdOcc[i] : '');
                 const excelR2 = sheet.addRow(r2);
 
-                // FIX: Collect ALL daily issues recorded for that day into Excel Cell Comment
                 for (let i = 0; i < daysInMonth; i++) {
                     if (dailyIssues[i].length > 0) {
                         const cell = excelR2.getCell(4 + i);
@@ -2380,14 +2440,14 @@
                 }
                 sheet.addRow(r4);
 
-                // Merge summary columns across the 4 rows
+                // Merge summary columns
                 sheet.mergeCells(currentRow, 1, currentRow + 3, 1);
                 sheet.mergeCells(currentRow, 2, currentRow + 3, 2);
                 for (let c = 0; c < 8; c++) {
                     sheet.mergeCells(currentRow, summaryColStart + c, currentRow + 3, summaryColStart + c);
                 }
 
-                // Apply borders and styling for machine block
+                // Styling
                 for (let r = currentRow; r < currentRow + 4; r++) {
                     const row = sheet.getRow(r);
                     row.eachCell((cell) => {
@@ -2399,7 +2459,7 @@
                     });
                 }
 
-                // Color code BD Min row if there's breakdown loss
+                // Highlight breakdown loss
                 for (let i = 0; i < daysInMonth; i++) {
                     if (dailyBdMin[i] > 0) {
                         const cell = excelR1.getCell(4 + i);
@@ -2408,7 +2468,6 @@
                     }
                 }
 
-                // Color availability % cell
                 const availCell = excelR1.getCell(summaryColStart + 4);
                 availCell.font = { bold: true };
                 availCell.fill = {
@@ -2420,687 +2479,889 @@
                 currentRow += 4;
             });
 
-            // Adjust Column Widths
-            sheet.getColumn(1).width = 8;
-            sheet.getColumn(2).width = 25;
-            sheet.getColumn(3).width = 12;
-            for (let d = 1; d <= daysInMonth; d++) sheet.getColumn(3 + d).width = 8;
-            sheet.getColumn(summaryColStart).width = 14;
-            sheet.getColumn(summaryColStart + 1).width = 14;
-            sheet.getColumn(summaryColStart + 2).width = 12;
-            sheet.getColumn(summaryColStart + 3).width = 12;
-            sheet.getColumn(summaryColStart + 4).width = 15;
-            sheet.getColumn(summaryColStart + 5).width = 10;
-            sheet.getColumn(summaryColStart + 6).width = 10;
-            sheet.getColumn(summaryColStart + 7).width = 25;
-        } else if (selectedFeature === 'trend') {
-            const sheet = workbook.addWorksheet('Breakdown Trend');
-            sheet.columns = [
-                { header: 'Machine Name', key: 'name', width: 25 },
-                { header: 'Total Breakdown Mins', key: 'mins', width: 22 },
-                { header: 'Total Occurrences', key: 'occ', width: 20 }
+            // Add KPI Summary Table in Availability Sheet with Color Highlights
+            const kpi = getKpiMetricsForPeriod(monthVal, yearVal);
+            sheet.addRow([]);
+            sheet.addRow(['Summary Metrics (KPI)']);
+            
+            const kpiHeaderRow = sheet.addRow(['KPI Metric', 'Value']);
+            kpiHeaderRow.font = { bold: true };
+
+            function getExcelColorHex(type, val) {
+                const v = parseFloat(val);
+                if (type === 'avail') {
+                    if (v >= 95) return 'FF92D050'; // Green
+                    if (v >= 90) return 'FFFF00';   // Yellow
+                    return 'FFFFC7CE';              // Red
+                } else if (type === 'mttr') {
+                    if (v <= 2.0) return 'FF92D050'; // Green
+                    if (v <= 4.0) return 'FFFF00';   // Yellow
+                    return 'FFFFC7CE';              // Red
+                } else if (type === 'mtbf') {
+                    if (v >= 48.0) return 'FF92D050'; // Green
+                    if (v >= 24.0) return 'FFFF00';   // Yellow
+                    return 'FFFFC7CE';              // Red
+                }
+                return null;
+            }
+
+            const kpiRows = [
+                { name: 'Total Breakdown Hours', val: `${kpi.overallBdHrs} Hrs`, type: null },
+                { name: 'Total Breakdown Occurrences', val: kpi.totalBdOcc, type: null },
+                { name: 'Overall Machine Availability', val: `${kpi.overallAvail}%`, type: 'avail' },
+                { name: 'Overall MTTR', val: `${kpi.overallMttr} Hrs`, type: 'mttr' },
+                { name: 'Overall MTBF', val: `${kpi.overallMtbf} Hrs`, type: 'mtbf' },
+                { name: 'Critical Machines Availability', val: `${kpi.critAvail}%`, type: 'avail' },
+                { name: 'Critical Machines MTTR', val: `${kpi.critMttr} Hrs`, type: 'mttr' },
+                { name: 'Critical Machines MTBF', val: `${kpi.critMtbf} Hrs`, type: 'mtbf' },
+                { name: 'Machines with Availability >= 98%', val: kpi.countGt98, type: null },
+                { name: 'Machines with Availability 90% - 98%', val: kpi.count90to98, type: null },
+                { name: 'Machines with Availability < 90%', val: kpi.countLt90, type: null }
             ];
 
-            machineMaster.forEach(mc => {
-                let totalMins = 0;
-                let totalOcc = 0;
+            kpiRows.forEach(item => {
+                const addedRow = sheet.addRow([item.name, item.val]);
+                if (item.type) {
+                    const hexColor = getExcelColorHex(item.type, item.val);
+                    if (hexColor) {
+                        const valCell = addedRow.getCell(2);
+                        valCell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: hexColor } };
+                        valCell.font = { bold: true };
+                    }
+                }
+            });
+
+            autoFitColumnWidths(sheet);
+
+        } else if (selectedFeature === 'trend') {
+            const sheet = workbook.addWorksheet('Breakdown Trend');
+            const daysInMonth = new Date(yearVal, monthVal + 1, 0).getDate();
+
+            sheet.addRow(['BREAKDOWN TREND']);
+            sheet.addRow([`Month & Year: ${monthName}-${yearVal}`]);
+            sheet.addRow([]);
+
+            const daysHeader = ['Day'];
+            for (let d = 1; d <= daysInMonth; d++) daysHeader.push(d);
+            daysHeader.push('Total');
+            sheet.addRow(daysHeader);
+
+            const dailyMins = Array(daysInMonth).fill(0);
+            const dailyOccs = Array(daysInMonth).fill(0);
+
+            breakdownLogs.forEach(l => {
+                const p = parseLogDate(l.date);
+                if (p.year === yearVal && p.month === monthVal) {
+                    const dayIdx = p.day - 1;
+                    if (dayIdx >= 0 && dayIdx < daysInMonth) {
+                        dailyMins[dayIdx] += Number(l.lossTime) || 0;
+                        dailyOccs[dayIdx] += 1;
+                    }
+                }
+            });
+
+            const minsRow = ['BD Loss Time (Mins)'];
+            for (let d = 0; d < daysInMonth; d++) minsRow.push(dailyMins[d]);
+            minsRow.push(dailyMins.reduce((a, b) => a + b, 0));
+            sheet.addRow(minsRow);
+
+            const occsRow = ['BD Occurrences'];
+            for (let d = 0; d < daysInMonth; d++) occsRow.push(dailyOccs[d]);
+            occsRow.push(dailyOccs.reduce((a, b) => a + b, 0));
+            sheet.addRow(occsRow);
+
+            sheet.addRow([]);
+            sheet.addRow(['Machine Breakdown Occurrences Details']);
+            sheet.addRow(['Sl.No', 'Machine Name', ...Array.from({length: daysInMonth}, (_, i) => i + 1), 'Total Occ.']);
+
+            machineMaster.forEach((mc, idx) => {
+                const mcDailyOcc = Array(daysInMonth).fill(0);
                 breakdownLogs.forEach(l => {
                     const p = parseLogDate(l.date);
                     if (l.mcName.trim().toUpperCase() === mc.name.trim().toUpperCase() && p.year === yearVal && p.month === monthVal) {
-                        totalMins += Number(l.lossTime) || 0;
-                        totalOcc += 1;
+                        const dayIdx = p.day - 1;
+                        if (dayIdx >= 0 && dayIdx < daysInMonth) mcDailyOcc[dayIdx] += 1;
                     }
                 });
-                sheet.addRow({ name: mc.name, mins: totalMins, occ: totalOcc });
+                const total = mcDailyOcc.reduce((a, b) => a + b, 0);
+                sheet.addRow([idx + 1, mc.name, ...mcDailyOcc, total]);
             });
+
+            autoFitColumnWidths(sheet);
+
         } else if (selectedFeature === 'spares') {
             const sheet = workbook.addWorksheet('Spares Analysis');
-            sheet.columns = [
-                { header: 'Spare Component Name', key: 'name', width: 30 },
-                { header: 'Total Quantity Consumed', key: 'qty', width: 25 }
-            ];
+            sheet.addRow(['Spares Consumption Frequency Table']);
+            sheet.addRow(['Sl.No', 'Spare Component Name', 'Total Quantities Consumed', 'Associated Breakdown Logs Count']);
 
-            const freqMap = {};
-            breakdownLogs.forEach(log => {
-                const p = parseLogDate(log.date);
-                if (p.year === yearVal && p.month === monthVal && log.spares) {
-                    log.spares.split(',').forEach(raw => {
-                        let name = raw.trim();
-                        let qty = 1;
-                        const match = name.match(/(.*)\(Qty:\s*(\d+)\)/i);
-                        if (match) { name = match[1].trim(); qty = parseInt(match[2]) || 1; }
-                        if (name) freqMap[name] = (freqMap[name] || 0) + qty;
+            const spareMap = {};
+            breakdownLogs.forEach(l => {
+                const p = parseLogDate(l.date);
+                if (p.year === yearVal && p.month === monthVal && l.spares) {
+                    const parts = l.spares.split(',');
+                    parts.forEach(part => {
+                        const match = part.match(/(.*?)\s*\(Qty:\s*(\d+)\)/);
+                        if (match) {
+                            const name = match[1].trim();
+                            const qty = parseInt(match[2]) || 1;
+                            if (!spareMap[name]) spareMap[name] = { qty: 0, count: 0 };
+                            spareMap[name].qty += qty;
+                            spareMap[name].count += 1;
+                        } else {
+                            const name = part.trim();
+                            if (name) {
+                                if (!spareMap[name]) spareMap[name] = { qty: 0, count: 0 };
+                                spareMap[name].qty += 1;
+                                spareMap[name].count += 1;
+                            }
+                        }
                     });
                 }
             });
 
-            Object.keys(freqMap).forEach(key => {
-                sheet.addRow({ name: key, qty: freqMap[key] });
-            });
+            let idx = 1;
+            for (let sName in spareMap) {
+                sheet.addRow([idx++, sName, spareMap[sName].qty, spareMap[sName].count]);
+            }
+            autoFitColumnWidths(sheet);
+
         } else if (selectedFeature === 'compare') {
             const sheet = workbook.addWorksheet('Machine Comparison');
-            sheet.columns = [
-                { header: 'Machine Name', key: 'name', width: 25 },
-                { header: 'Total Downtime (Hrs)', key: 'hrs', width: 22 },
-                { header: 'Total Occurrences', key: 'occ', width: 20 }
-            ];
+            sheet.addRow(['Comparative Machine Metrics Matrix']);
+            sheet.addRow(['Sl.No', 'Machine Name', 'Breakdown Loss (Mins)', 'Breakdown Loss (Hrs)', 'Breakdown Occurrences', 'Availability %', 'MTTR (Hrs)', 'MTBF (Hrs)']);
 
-            machineMaster.forEach(mc => {
-                let totalMins = 0;
-                let totalOcc = 0;
+            machineMaster.forEach((mc, idx) => {
+                let mcMins = 0;
+                let mcOcc = 0;
                 breakdownLogs.forEach(l => {
                     const p = parseLogDate(l.date);
                     if (l.mcName.trim().toUpperCase() === mc.name.trim().toUpperCase() && p.year === yearVal && p.month === monthVal) {
-                        totalMins += Number(l.lossTime) || 0;
-                        totalOcc += 1;
+                        mcMins += Number(l.lossTime) || 0;
+                        mcOcc += 1;
                     }
                 });
-                sheet.addRow({ name: mc.name, hrs: (totalMins / 60).toFixed(2), occ: totalOcc });
+                const hrs = (mcMins / 60).toFixed(2);
+                const avail = (((720 * 60 - mcMins) / (720 * 60)) * 100).toFixed(2);
+                const mttr = mcOcc > 0 ? (mcMins / 60 / mcOcc).toFixed(2) : "0.00";
+                const mtbf = mcOcc > 0 ? ((720 - mcMins / 60) / mcOcc).toFixed(2) : "720.00";
+
+                sheet.addRow([idx + 1, mc.name, mcMins, Number(hrs), mcOcc, `${avail}%`, Number(mttr), Number(mtbf)]);
             });
+            autoFitColumnWidths(sheet);
+
         } else if (selectedFeature === 'quadrant') {
             const sheet = workbook.addWorksheet('Quadrant Profiling');
-            sheet.columns = [
-                { header: 'Machine Name', key: 'name', width: 25 },
-                { header: 'Total Occurrences', key: 'occ', width: 20 },
-                { header: 'Total Downtime (Min)', key: 'mins', width: 22 },
-                { header: 'Assigned Quadrant', key: 'quadrant', width: 35 }
-            ];
+            sheet.addRow(['Quadrant Profiling Breakdown Analysis']);
+            sheet.addRow(['Sl.No', 'Machine Name', 'Total Occurrences', 'Total Loss Time (Mins)', 'Assigned Quadrant Category']);
 
-            const occThresh = parseInt(document.getElementById('thresholdOcc')?.value) || 2;
-            const dtThresh = parseInt(document.getElementById('thresholdDt')?.value) || 30;
-
-            machineMaster.forEach(mc => {
-                let totalMins = 0;
-                let totalOcc = 0;
+            machineMaster.forEach((mc, idx) => {
+                let mcMins = 0;
+                let mcOcc = 0;
                 breakdownLogs.forEach(l => {
                     const p = parseLogDate(l.date);
                     if (l.mcName.trim().toUpperCase() === mc.name.trim().toUpperCase() && p.year === yearVal && p.month === monthVal) {
-                        totalMins += Number(l.lossTime) || 0;
-                        totalOcc += 1;
+                        mcMins += Number(l.lossTime) || 0;
+                        mcOcc += 1;
                     }
                 });
 
-                let qName = "Q4: Low Occ, Low DT";
-                if (totalOcc >= occThresh && totalMins >= dtThresh) qName = "Q1: High Occ, High DT (Critical)";
-                else if (totalOcc < occThresh && totalMins >= dtThresh) qName = "Q2: Low Occ, High DT (Major)";
-                else if (totalOcc >= occThresh && totalMins < dtThresh) qName = "Q3: High Occ, Low DT (Frequent)";
+                let category = "Q4: Low Occ / Low DT";
+                if (mcOcc >= 2 && mcMins >= 30) category = "Q1: High Occ / High DT (Critical)";
+                else if (mcOcc < 2 && mcMins >= 30) category = "Q2: Low Occ / High DT (Chronic)";
+                else if (mcOcc >= 2 && mcMins < 30) category = "Q3: High Occ / Low DT (Frequent Minor)";
 
-                sheet.addRow({ name: mc.name, occ: totalOcc, mins: totalMins, quadrant: qName });
+                sheet.addRow([idx + 1, mc.name, mcOcc, mcMins, category]);
             });
+            autoFitColumnWidths(sheet);
         }
 
-        workbook.xlsx.writeBuffer().then(buffer => {
-            const blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
-            saveAs(blob, filename);
-        });
+        const buffer = await workbook.xlsx.writeBuffer();
+        const blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+        saveAs(blob, filename);
     }
 
     function sendEmailViaWebGmail() {
-        const monthVal = parseInt(document.getElementById('modalReportMonth').value);
-        const yearVal = parseInt(document.getElementById('modalReportYear').value);
-        const monthNames = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
-        const selectedMonthText = monthNames[monthVal];
-
+        const fromAddr = document.getElementById('emailFrom').value;
         const toInputs = document.querySelectorAll('.emailToInput');
-        const recipients = Array.from(toInputs).map(i => i.value.trim()).filter(Boolean);
+        const ccInputs = document.querySelectorAll('.emailCcInput');
 
-        if (recipients.length === 0) {
-            alert('Please enter at least one Recipient email address.');
+        const toAddrs = Array.from(toInputs).map(i => i.value.trim()).filter(v => v !== '');
+        const ccAddrs = Array.from(ccInputs).map(i => i.value.trim()).filter(v => v !== '');
+
+        if (toAddrs.length === 0) {
+            alert('Please enter at least one recipient To Address.');
             return;
         }
 
-        const ccInputs = document.querySelectorAll('.emailCcInput');
-        const ccs = Array.from(ccInputs).map(i => i.value.trim()).filter(Boolean);
+        const subject = encodeURIComponent(document.getElementById('emailSubject').value);
+        const kpi = getKpiMetrics();
 
-        const subjectStr = document.getElementById('emailSubject').value || `Equipment Breakdown & Availability Status Report - ${selectedMonthText} ${yearVal}`;
+        const monthVal = parseInt(document.getElementById('modalReportMonth').value);
+        const yearVal = parseInt(document.getElementById('modalReportYear').value);
+        const monthNames = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
+        const selectedMonthYear = `${monthNames[monthVal]} ${yearVal}`;
 
-        const kpi = getKpiMetricsForPeriod(monthVal, yearVal);
+        let bodyText = `Respected Team,\n\nPlease find the Equipment Breakdown & Availability Summary Report for ${selectedMonthYear}:\n\n`;
+        bodyText += `--- KPI SUMMARY METRICS ---\n`;
+        bodyText += `• Total Breakdown Hours: ${kpi.overallBdHrs} Hrs\n`;
+        bodyText += `• Total Breakdown Occurrences: ${kpi.totalBdOcc}\n`;
+        bodyText += `• Overall Machine Availability: ${kpi.overallAvail}%\n`;
+        bodyText += `• Overall MTTR: ${kpi.overallMttr} Hrs\n`;
+        bodyText += `• Overall MTBF: ${kpi.overallMtbf} Hrs\n`;
+        bodyText += `• Critical Machines Availability: ${kpi.critAvail}%\n`;
+        bodyText += `• Critical Machines MTTR: ${kpi.critMttr} Hrs\n`;
+        bodyText += `• Critical Machines MTBF: ${kpi.critMtbf} Hrs\n`;
+        bodyText += `• Machines (Avail >= 98%): ${kpi.countGt98}\n`;
+        bodyText += `• Machines (Avail 90%-98%): ${kpi.count90to98}\n`;
+        bodyText += `• Machines (Avail < 90%): ${kpi.countLt90}\n\n`;
+        if (fromAddr) bodyText += `Sender: ${fromAddr}\n`;
+        bodyText += `Regards,\nMaintenance & Engineering Team\nDelphi-TVS Oragadam`;
 
-        let emailBody = `EQUIPMENT BREAKDOWN & AVAILABILITY REPORT\n`;
-        emailBody += `Plant: CR - Oragadam | APU: INJECTOR\n`;
-        emailBody += `Period: ${selectedMonthText} ${yearVal}\n\n`;
-
-        emailBody += `--- SUMMARY KPI METRICS ---\n`;
-        emailBody += `Total BD Hours: ${kpi.overallBdHrs} Hrs\n`;
-        emailBody += `Total BD Occurrences: ${kpi.totalBdOcc}\n`;
-        emailBody += `Overall Machine Availability: ${kpi.overallAvail}%\n`;
-        emailBody += `Overall MTTR: ${kpi.overallMttr} Hrs\n`;
-        emailBody += `Overall MTBF: ${kpi.overallMtbf} Hrs\n`;
-        emailBody += `Critical Machines Availability: ${kpi.critAvail}%\n`;
-        emailBody += `Critical Machines MTTR: ${kpi.critMttr} Hrs\n`;
-        emailBody += `Critical Machines MTBF: ${kpi.critMtbf} Hrs\n\n`;
-
-        emailBody += `--- BREAKDOWN LOG HIGHLIGHTS ---\n`;
-        const periodLogs = breakdownLogs.filter(log => {
-            const p = parseLogDate(log.date);
-            return p.year === yearVal && p.month === monthVal;
-        });
-
-        if (periodLogs.length === 0) {
-            emailBody += `No breakdown entries recorded for ${selectedMonthText} ${yearVal}.\n`;
-        } else {
-            periodLogs.forEach((log, idx) => {
-                emailBody += `${idx + 1}. [${formatDateStr(log.date)}] ${log.mcName} - Loss: ${log.lossTime} min | Issue: ${log.issue || 'N/A'} | Status: ${log.pcaStatus || 'N/A'}\n`;
-            });
-        }
-
-        emailBody += `\nReport generated automatically from Equipment Breakdown System.`;
-
-        const gmailUrl = `https://mail.google.com/mail/?view=cm&fs=1&to=${encodeURIComponent(recipients.join(','))}&cc=${encodeURIComponent(ccs.join(','))}&su=${encodeURIComponent(subjectStr)}&body=${encodeURIComponent(emailBody)}`;
+        const encodedBody = encodeURIComponent(bodyText);
+        const gmailUrl = `https://mail.google.com/mail/?view=cm&fs=1&to=${encodeURIComponent(toAddrs.join(','))}&cc=${encodeURIComponent(ccAddrs.join(','))}&su=${subject}&body=${encodedBody}`;
 
         window.open(gmailUrl, '_blank');
         closeEmailModal();
     }
 
     function generateCopyContent() {
-        const dateInput = document.getElementById('copyFilterDate')?.value;
-        const shiftInput = document.getElementById('copyFilterShift')?.value || '1';
-        const descInput = document.getElementById('copyDescription')?.value || '';
-        const previewArea = document.getElementById('copyPreviewArea');
+        const selectedDate = document.getElementById('copyFilterDate').value;
+        const selectedShift = document.getElementById('copyFilterShift').value;
+        const descText = document.getElementById('copyDescription').value.trim();
 
-        if (!previewArea) return;
+        if (!selectedDate) return;
 
-        if (!dateInput) {
-            previewArea.value = 'Please select a valid date above to generate breakdown summary.';
-            return;
+        const formattedDate = formatDateStr(selectedDate);
+        const logs = breakdownLogs.filter(l => l.date === selectedDate && String(l.shift) === String(selectedShift));
+
+        let out = `📌 BREAKDOWN SUMMARY REPORT\n`;
+        out += `📅 Date: ${formattedDate} | Shift: ${selectedShift}\n`;
+        out += `----------------------------------------\n`;
+
+        if (descText) {
+            out += `📝 Shift Notes: ${descText}\n`;
+            out += `----------------------------------------\n`;
         }
 
-        const filteredLogs = breakdownLogs.filter(log => log.date === dateInput && String(log.shift) === String(shiftInput));
-        const formattedDate = formatDateStr(dateInput);
-
-        let text = `========================================\n`;
-        text += ` BREAKDOWN SUMMARY REPORT\n`;
-        text += `========================================\n`;
-        text += `Date: ${formattedDate}\n`;
-        text += `Shift: ${shiftInput}\n`;
-        if (descInput.trim()) {
-            text += `General Notes: ${descInput.trim()}\n`;
-        }
-        text += `----------------------------------------\n\n`;
-
-        if (filteredLogs.length === 0) {
-            text += `No breakdown entries recorded for Shift ${shiftInput} on ${formattedDate}.\n`;
+        if (logs.length === 0) {
+            out += `No breakdown logs recorded for this shift.\n`;
         } else {
-            filteredLogs.forEach((log, idx) => {
-                text += `${idx + 1}. Machine: ${log.mcName} (${log.mcNo || 'N/A'})\n`;
-                text += `   - Time: ${log.time || 'N/A'}\n`;
-                text += `   - Nature of Issue: ${log.issue || 'N/A'}\n`;
-                text += `   - Breakdown Loss: ${log.lossTime || 0} mins\n`;
-                text += `   - Status: ${log.status || 'RUN'}\n`;
-                text += `   - Shift Engineer: ${log.shiftEng || 'N/A'}\n`;
-                text += `   - Immediate Action: ${log.immAction || 'N/A'}\n`;
-                text += `   - PCA Action: ${log.permAction || 'N/A'}\n`;
-                text += `   - PCA Responsibility: ${log.respEng || 'N/A'} (${log.pcaStatus || 'N/A'})\n`;
-                if (log.spares) text += `   - Spares Used: ${log.spares}\n`;
-                text += `----------------------------------------\n`;
+            logs.forEach((log, index) => {
+                out += `${index + 1}. Machine: ${log.mcName}\n`;
+                out += `   • Issue: ${log.issue || 'N/A'}\n`;
+                out += `   • Loss Time: ${log.lossTime} mins\n`;
+                //if (log.immAction) out += `   • Immediate Action: ${log.immAction}\n`;
+                //if (log.permAction) out += `   • Permanent Action: ${log.permAction}\n`;
+                //if (log.spares) out += `   • Spares Consumed: ${log.spares}\n`;
+                //out += `   • Shift Eng: ${log.shiftEng || 'N/A'} | PCA Resp: ${log.respEng || 'N/A'} (${log.pcaStatus})\n\n`;
             });
         }
 
-        previewArea.value = text;
+        document.getElementById('copyPreviewArea').value = out;
     }
 
     function copyToClipboard() {
-        const previewArea = document.getElementById('copyPreviewArea');
-        if (!previewArea || !previewArea.value) return;
-
-        previewArea.select();
+        const area = document.getElementById('copyPreviewArea');
+        area.select();
         document.execCommand('copy');
-        alert('Breakdown summary copied to clipboard successfully!');
+        alert('Copied breakdown summary to clipboard!');
     }
 
     function renderBreakdownTrend() {
-        const canvas = document.getElementById('trendCanvas');
-        if (!canvas) return;
-        const ctx = canvas.getContext('2d');
-        const year = parseInt(document.getElementById('selectYear').value);
-        const month = parseInt(document.getElementById('selectMonth').value);
-        const daysInMonth = new Date(year, month + 1, 0).getDate();
-
-        const metric = document.getElementById('trendChartMetric')?.value || 'both';
-        const chartType = document.getElementById('trendChartType')?.value || 'bar';
-        const machineFilter = document.getElementById('trendChartMachine')?.value || '';
-        const showLabels = document.getElementById('trendShowLabels')?.checked ?? true;
+        const monthVal = parseInt(document.getElementById('selectMonth').value);
+        const yearVal = parseInt(document.getElementById('selectYear').value);
+        const daysInMonth = new Date(yearVal, monthVal + 1, 0).getDate();
 
         const monthNames = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
-        document.getElementById('trendMonthYearText').innerText = `${monthNames[month]}-${String(year).slice(-2)}`;
+        document.getElementById('trendMonthYearText').innerText = `${monthNames[monthVal]}-${String(yearVal).slice(-2)}`;
+
+        const metric = document.getElementById('trendChartMetric').value;
+        const chartType = document.getElementById('trendChartType').value;
+        const selectedMachine = document.getElementById('trendChartMachine').value;
+        const maxRangeVal = document.getElementById('trendMaxMinSelect').value;
+        const showLabels = document.getElementById('trendShowLabels').checked;
 
         const dailyMins = Array(daysInMonth).fill(0);
-        const dailyOcc = Array(daysInMonth).fill(0);
+        const dailyOccs = Array(daysInMonth).fill(0);
 
-        breakdownLogs.forEach(log => {
-            const p = parseLogDate(log.date);
-            if (p.year === year && p.month === month) {
-                if (!machineFilter || log.mcName.trim().toUpperCase() === machineFilter.trim().toUpperCase()) {
-                    const dayIdx = p.day - 1;
-                    if (dayIdx >= 0 && dayIdx < daysInMonth) {
-                        dailyMins[dayIdx] += Number(log.lossTime) || 0;
-                        dailyOcc[dayIdx] += 1;
-                    }
+        breakdownLogs.forEach(l => {
+            const p = parseLogDate(l.date);
+            if (p.year === yearVal && p.month === monthVal) {
+                if (selectedMachine && l.mcName.trim().toUpperCase() !== selectedMachine.trim().toUpperCase()) return;
+                const dayIdx = p.day - 1;
+                if (dayIdx >= 0 && dayIdx < daysInMonth) {
+                    dailyMins[dayIdx] += Number(l.lossTime) || 0;
+                    dailyOccs[dayIdx] += 1;
                 }
             }
         });
 
-        // Render Trend Tables
-        const totalTable = document.getElementById('trendTotalTable');
-        if (totalTable) {
-            let html = `<thead><tr><th>Metric</th>`;
-            for (let d = 1; d <= daysInMonth; d++) html += `<th>${d}</th>`;
-            html += `<th>Total</th></tr></thead><tbody>`;
-
-            html += `<tr><td><b>BD Loss Time (min)</b></td>`;
-            let sumMins = 0;
-            for (let d = 0; d < daysInMonth; d++) {
-                sumMins += dailyMins[d];
-                html += `<td class="${dailyMins[d] > 0 ? 'bg-red' : ''}">${dailyMins[d] > 0 ? dailyMins[d] : ''}</td>`;
-            }
-            html += `<td><b>${sumMins}</b></td></tr>`;
-
-            html += `<tr><td><b>BD Occurrences</b></td>`;
-            let sumOcc = 0;
-            for (let d = 0; d < daysInMonth; d++) {
-                sumOcc += dailyOcc[d];
-                html += `<td class="${dailyOcc[d] > 0 ? 'bg-green' : ''}">${dailyOcc[d] > 0 ? dailyOcc[d] : ''}</td>`;
-            }
-            html += `<td><b>${sumOcc}</b></td></tr></tbody>`;
-            totalTable.innerHTML = html;
-        }
-
-        const machineTable = document.getElementById('trendMachineTable');
-        if (machineTable) {
-            let html = `<thead><tr><th>Machine Name</th>`;
-            for (let d = 1; d <= daysInMonth; d++) html += `<th>${d}</th>`;
-            html += `<th>Total Occ.</th></tr></thead><tbody>`;
-
-            machineMaster.forEach(mc => {
-                const mcDailyOcc = Array(daysInMonth).fill(0);
-                breakdownLogs.forEach(l => {
-                    const p = parseLogDate(l.date);
-                    if (l.mcName.trim().toUpperCase() === mc.name.trim().toUpperCase() && p.year === year && p.month === month) {
-                        const dayIdx = p.day - 1;
-                        if (dayIdx >= 0 && dayIdx < daysInMonth) mcDailyOcc[dayIdx] += 1;
-                    }
-                });
-
-                const totalMcOcc = mcDailyOcc.reduce((a, b) => a + b, 0);
-                if (totalMcOcc > 0 || !machineFilter) {
-                    html += `<tr><td style="text-align:left; font-weight:bold;">${mc.name}</td>`;
-                    for (let d = 0; d < daysInMonth; d++) {
-                        html += `<td class="${mcDailyOcc[d] > 0 ? 'bg-green' : ''}">${mcDailyOcc[d] > 0 ? mcDailyOcc[d] : ''}</td>`;
-                    }
-                    html += `<td><b>${totalMcOcc}</b></td></tr>`;
-                }
-            });
-            html += `</tbody>`;
-            machineTable.innerHTML = html;
-        }
-
-        // Draw Canvas Trend Chart
+        // Canvas Rendering
+        const canvas = document.getElementById('trendCanvas');
+        const ctx = canvas.getContext('2d');
         ctx.clearRect(0, 0, canvas.width, canvas.height);
-        const paddingLeft = 50;
-        const paddingRight = 50;
-        const paddingTop = 30;
-        const paddingBottom = 40;
-        const graphWidth = canvas.width - paddingLeft - paddingRight;
-        const graphHeight = canvas.height - paddingTop - paddingBottom;
 
-        const maxMins = Math.max(...dailyMins, 10);
-        const maxOcc = Math.max(...dailyOcc, 5);
+        const margin = { top: 40, right: 60, bottom: 40, left: 60 };
+        const w = canvas.width - margin.left - margin.right;
+        const h = canvas.height - margin.top - margin.bottom;
 
-        // Draw Axis
+        let maxMins = maxRangeVal !== 'auto' ? parseInt(maxRangeVal) : Math.max(...dailyMins, 100);
+        let maxOccs = Math.max(...dailyOccs, 5);
+
+        // Draw Axes & Grid
         ctx.beginPath();
         ctx.strokeStyle = '#ccc';
         ctx.lineWidth = 1;
-        ctx.moveTo(paddingLeft, paddingTop);
-        ctx.lineTo(paddingLeft, canvas.height - paddingBottom);
-        ctx.lineTo(canvas.width - paddingRight, canvas.height - paddingBottom);
+
+        for (let i = 0; i <= 5; i++) {
+            const y = margin.top + (h / 5) * i;
+            ctx.moveTo(margin.left, y);
+            ctx.lineTo(canvas.width - margin.right, y);
+
+            const valMin = Math.round(maxMins - (maxMins / 5) * i);
+            ctx.fillStyle = '#1f4e78';
+            ctx.font = '10px sans-serif';
+            ctx.textAlign = 'right';
+            if (metric === 'min' || metric === 'both') ctx.fillText(valMin, margin.left - 8, y + 3);
+
+            const valOcc = Math.round(maxOccs - (maxOccs / 5) * i);
+            ctx.fillStyle = '#d9534f';
+            ctx.textAlign = 'left';
+            if (metric === 'occ' || metric === 'both') ctx.fillText(valOcc, canvas.width - margin.right + 8, y + 3);
+        }
         ctx.stroke();
 
-        const stepX = graphWidth / daysInMonth;
+        const stepX = w / daysInMonth;
 
-        // Draw Grid and X Labels
-        for (let i = 0; i < daysInMonth; i++) {
-            const x = paddingLeft + i * stepX + stepX / 2;
+        // Draw Days X Labels
+        for (let d = 1; d <= daysInMonth; d++) {
+            const x = margin.left + (d - 1) * stepX + stepX / 2;
             ctx.fillStyle = '#333';
-            ctx.font = '10px sans-serif';
             ctx.textAlign = 'center';
-            ctx.fillText(i + 1, x, canvas.height - paddingBottom + 15);
+            ctx.font = '10px sans-serif';
+            ctx.fillText(d, x, canvas.height - margin.bottom + 15);
         }
 
-        // Render Minutes Bars/Lines
+        // Draw Data (Minutes)
         if (metric === 'min' || metric === 'both') {
             if (chartType === 'bar') {
-                for (let i = 0; i < daysInMonth; i++) {
-                    const val = dailyMins[i];
-                    if (val > 0) {
-                        const barH = (val / maxMins) * graphHeight;
-                        const x = paddingLeft + i * stepX + stepX * 0.15;
-                        const w = stepX * (metric === 'both' ? 0.35 : 0.7);
-                        const y = canvas.height - paddingBottom - barH;
+                for (let d = 0; d < daysInMonth; d++) {
+                    const val = dailyMins[d];
+                    const barH = (val / maxMins) * h;
+                    const x = margin.left + d * stepX + stepX * 0.15;
+                    const barW = stepX * 0.7;
+                    const y = margin.top + h - barH;
 
-                        ctx.fillStyle = '#d9534f';
-                        ctx.fillRect(x, y, w, barH);
+                    ctx.fillStyle = '#1f4e78';
+                    ctx.fillRect(x, y, barW, barH);
 
-                        if (showLabels) {
-                            ctx.fillStyle = '#c9302c';
-                            ctx.font = 'bold 9px sans-serif';
-                            ctx.fillText(val, x + w / 2, y - 3);
-                        }
+                    if (showLabels && val > 0) {
+                        ctx.fillStyle = '#000';
+                        ctx.font = 'bold 9px sans-serif';
+                        ctx.textAlign = 'center';
+                        ctx.fillText(val, x + barW / 2, y - 4);
                     }
                 }
-            } else {
+            } else if (chartType === 'line' || chartType === 'area') {
                 ctx.beginPath();
-                ctx.strokeStyle = '#d9534f';
+                ctx.strokeStyle = '#1f4e78';
                 ctx.lineWidth = 2;
-                for (let i = 0; i < daysInMonth; i++) {
-                    const x = paddingLeft + i * stepX + stepX / 2;
-                    const y = canvas.height - paddingBottom - (dailyMins[i] / maxMins) * graphHeight;
-                    if (i === 0) ctx.moveTo(x, y);
+
+                for (let d = 0; d < daysInMonth; d++) {
+                    const x = margin.left + d * stepX + stepX / 2;
+                    const y = margin.top + h - (dailyMins[d] / maxMins) * h;
+                    if (d === 0) ctx.moveTo(x, y);
                     else ctx.lineTo(x, y);
                 }
                 ctx.stroke();
 
                 if (chartType === 'area') {
-                    ctx.lineTo(paddingLeft + (daysInMonth - 1) * stepX + stepX / 2, canvas.height - paddingBottom);
-                    ctx.lineTo(paddingLeft + stepX / 2, canvas.height - paddingBottom);
-                    ctx.fillStyle = 'rgba(217, 83, 79, 0.2)';
+                    ctx.lineTo(margin.left + (daysInMonth - 1) * stepX + stepX / 2, margin.top + h);
+                    ctx.lineTo(margin.left + stepX / 2, margin.top + h);
+                    ctx.fillStyle = 'rgba(31, 78, 120, 0.2)';
                     ctx.fill();
                 }
+
+                for (let d = 0; d < daysInMonth; d++) {
+                    const val = dailyMins[d];
+                    const x = margin.left + d * stepX + stepX / 2;
+                    const y = margin.top + h - (val / maxMins) * h;
+
+                    ctx.beginPath();
+                    ctx.arc(x, y, 3, 0, Math.PI * 2);
+                    ctx.fillStyle = '#1f4e78';
+                    ctx.fill();
+
+                    if (showLabels && val > 0) {
+                        ctx.fillStyle = '#000';
+                        ctx.font = 'bold 9px sans-serif';
+                        ctx.textAlign = 'center';
+                        ctx.fillText(val, x, y - 6);
+                    }
+                }
             }
         }
 
-        // Render Occurrences Line/Bars
+        // Draw Data (Occurrences) as Overlay Line
         if (metric === 'occ' || metric === 'both') {
-            if (chartType === 'bar' && metric === 'occ') {
-                for (let i = 0; i < daysInMonth; i++) {
-                    const val = dailyOcc[i];
-                    if (val > 0) {
-                        const barH = (val / maxOcc) * graphHeight;
-                        const x = paddingLeft + i * stepX + stepX * 0.15;
-                        const w = stepX * 0.7;
-                        const y = canvas.height - paddingBottom - barH;
+            ctx.beginPath();
+            ctx.strokeStyle = '#d9534f';
+            ctx.lineWidth = 2;
+            ctx.setLineDash([4, 4]);
 
-                        ctx.fillStyle = '#107c41';
-                        ctx.fillRect(x, y, w, barH);
+            for (let d = 0; d < daysInMonth; d++) {
+                const x = margin.left + d * stepX + stepX / 2;
+                const y = margin.top + h - (dailyOccs[d] / maxOccs) * h;
+                if (d === 0) ctx.moveTo(x, y);
+                else ctx.lineTo(x, y);
+            }
+            ctx.stroke();
+            ctx.setLineDash([]);
 
-                        if (showLabels) {
-                            ctx.fillStyle = '#0b5a2f';
-                            ctx.font = 'bold 9px sans-serif';
-                            ctx.fillText(val, x + w / 2, y - 3);
-                        }
-                    }
-                }
-            } else {
+            for (let d = 0; d < daysInMonth; d++) {
+                const val = dailyOccs[d];
+                const x = margin.left + d * stepX + stepX / 2;
+                const y = margin.top + h - (val / maxOccs) * h;
+
                 ctx.beginPath();
-                ctx.strokeStyle = '#107c41';
-                ctx.lineWidth = 2;
-                for (let i = 0; i < daysInMonth; i++) {
-                    const x = paddingLeft + i * stepX + (metric === 'both' && chartType === 'bar' ? stepX * 0.6 : stepX / 2);
-                    const y = canvas.height - paddingBottom - (dailyOcc[i] / maxOcc) * graphHeight;
-                    if (i === 0) ctx.moveTo(x, y);
-                    else ctx.lineTo(x, y);
-                }
-                ctx.stroke();
+                ctx.arc(x, y, 4, 0, Math.PI * 2);
+                ctx.fillStyle = '#d9534f';
+                ctx.fill();
 
-                // Points for Occurrences Line
-                for (let i = 0; i < daysInMonth; i++) {
-                    const val = dailyOcc[i];
-                    if (val > 0) {
-                        const x = paddingLeft + i * stepX + (metric === 'both' && chartType === 'bar' ? stepX * 0.6 : stepX / 2);
-                        const y = canvas.height - paddingBottom - (val / maxOcc) * graphHeight;
-
-                        ctx.beginPath();
-                        ctx.arc(x, y, 4, 0, Math.PI * 2);
-                        ctx.fillStyle = '#107c41';
-                        ctx.fill();
-
-                        if (showLabels) {
-                            ctx.fillStyle = '#0b5a2f';
-                            ctx.font = 'bold 10px sans-serif';
-                            ctx.fillText(val, x, y - 6);
-                        }
-                    }
+                if (showLabels && val > 0 && metric === 'both') {
+                    ctx.fillStyle = '#d9534f';
+                    ctx.font = 'bold 9px sans-serif';
+                    ctx.textAlign = 'center';
+                    ctx.fillText(val, x, y + 12);
+                } else if (showLabels && val > 0 && metric === 'occ') {
+                    ctx.fillStyle = '#d9534f';
+                    ctx.font = 'bold 9px sans-serif';
+                    ctx.textAlign = 'center';
+                    ctx.fillText(val, x, y - 6);
                 }
             }
         }
+
+        // Total Summary Table
+        const totalTable = document.getElementById('trendTotalTable');
+        let tHtml = `<thead><tr><th>Metric</th>`;
+        for (let d = 1; d <= daysInMonth; d++) tHtml += `<th>${d}</th>`;
+        tHtml += `<th>Total</th></tr></thead><tbody>`;
+
+        tHtml += `<tr><td><b>BD Loss Time (Mins)</b></td>`;
+        for (let d = 0; d < daysInMonth; d++) tHtml += `<td>${dailyMins[d] || ''}</td>`;
+        tHtml += `<td><b>${dailyMins.reduce((a, b) => a + b, 0)}</b></td></tr>`;
+
+        tHtml += `<tr><td><b>BD Occurrences</b></td>`;
+        for (let d = 0; d < daysInMonth; d++) tHtml += `<td>${dailyOccs[d] || ''}</td>`;
+        tHtml += `<td><b>${dailyOccs.reduce((a, b) => a + b, 0)}</b></td></tr></tbody>`;
+        totalTable.innerHTML = tHtml;
+
+        // Machine Occurrences Breakdown Table
+        const mcTable = document.getElementById('trendMachineTable');
+        let mHtml = `<thead><tr><th>Sl.No</th><th>Machine Details</th>`;
+        for (let d = 1; d <= daysInMonth; d++) mHtml += `<th>${d}</th>`;
+        mHtml += `<th>Total Occ.</th></tr></thead><tbody>`;
+
+        machineMaster.forEach((mc, idx) => {
+            if (selectedMachine && mc.name.trim().toUpperCase() !== selectedMachine.trim().toUpperCase()) return;
+
+            const mcDailyOcc = Array(daysInMonth).fill(0);
+            breakdownLogs.forEach(l => {
+                const p = parseLogDate(l.date);
+                if (l.mcName.trim().toUpperCase() === mc.name.trim().toUpperCase() && p.year === yearVal && p.month === monthVal) {
+                    const dayIdx = p.day - 1;
+                    if (dayIdx >= 0 && dayIdx < daysInMonth) mcDailyOcc[dayIdx] += 1;
+                }
+            });
+
+            const total = mcDailyOcc.reduce((a, b) => a + b, 0);
+            const mcDetailDisplay = mc.mcNo ? `${mc.mcNo} - ${mc.name}` : mc.name;
+            mHtml += `<tr><td>${idx + 1}</td><td style="text-align:left;"><b>${mcDetailDisplay}</b></td>`;
+            for (let d = 0; d < daysInMonth; d++) {
+                mHtml += `<td class="${mcDailyOcc[d] > 0 ? 'bg-green' : ''}">${mcDailyOcc[d] || ''}</td>`;
+            }
+            mHtml += `<td><b>${total}</b></td></tr>`;
+        });
+        mHtml += `</tbody>`;
+        mcTable.innerHTML = mHtml;
     }
 
     function renderSparesTrend() {
-        const canvas = document.getElementById('sparesCanvas');
-        if (!canvas) return;
-        const ctx = canvas.getContext('2d');
+        const monthSelVal = document.getElementById('sparesMonthSelect').value;
+        const yearSelVal = document.getElementById('sparesYearSelect').value;
+        const yMaxVal = document.getElementById('sparesYMaxSelect').value;
 
-        const monthFilter = document.getElementById('sparesMonthSelect')?.value || 'all';
-        const yearFilter = document.getElementById('sparesYearSelect')?.value || 'all';
-        const yMaxSetting = document.getElementById('sparesYMaxSelect')?.value || '10';
+        const spareMap = {};
+        breakdownLogs.forEach(l => {
+            const p = parseLogDate(l.date);
 
-        const freqMap = {};
-        breakdownLogs.forEach(log => {
-            const p = parseLogDate(log.date);
-            if ((monthFilter === 'all' || p.month === parseInt(monthFilter)) &&
-                (yearFilter === 'all' || p.year === parseInt(yearFilter))) {
-                if (log.spares) {
-                    log.spares.split(',').forEach(raw => {
-                        let name = raw.trim();
-                        let qty = 1;
-                        const match = name.match(/(.*)\(Qty:\s*(\d+)\)/i);
-                        if (match) { name = match[1].trim(); qty = parseInt(match[2]) || 1; }
-                        if (name) freqMap[name] = (freqMap[name] || 0) + qty;
-                    });
-                }
+            if (monthSelVal !== 'all' && p.month !== parseInt(monthSelVal)) return;
+            if (yearSelVal !== 'all' && p.year !== parseInt(yearSelVal)) return;
+
+            if (l.spares) {
+                const parts = l.spares.split(',');
+                parts.forEach(part => {
+                    const match = part.match(/(.*?)\s*\(Qty:\s*(\d+)\)/);
+                    if (match) {
+                        const name = match[1].trim();
+                        const qty = parseInt(match[2]) || 1;
+                        if (!spareMap[name]) spareMap[name] = { qty: 0, count: 0 };
+                        spareMap[name].qty += qty;
+                        spareMap[name].count += 1;
+                    } else {
+                        const name = part.trim();
+                        if (name) {
+                            if (!spareMap[name]) spareMap[name] = { qty: 0, count: 0 };
+                            spareMap[name].qty += 1;
+                            spareMap[name].count += 1;
+                        }
+                    }
+                });
             }
         });
 
-        const sortedSpares = Object.keys(freqMap).map(k => ({ name: k, qty: freqMap[k] })).sort((a, b) => b.qty - a.qty);
+        const sortedSpares = Object.keys(spareMap).map(k => ({
+            name: k,
+            qty: spareMap[k].qty,
+            count: spareMap[k].count
+        })).sort((a, b) => b.qty - a.qty);
 
-        // Render Table
-        const table = document.getElementById('sparesFrequencyTable');
-        if (table) {
-            let html = `<thead><tr><th>Sl.No</th><th>Spare Component Name</th><th>Total Quantity Consumed</th></tr></thead><tbody>`;
-            if (sortedSpares.length === 0) {
-                html += `<tr><td colspan="3" style="color:#888;">No spares consumption records found.</td></tr>`;
-            } else {
-                sortedSpares.forEach((sp, i) => {
-                    html += `<tr><td>${i + 1}</td><td style="text-align:left; font-weight:bold;">${sp.name}</td><td><b>${sp.qty}</b></td></tr>`;
-                });
-            }
-            html += `</tbody>`;
-            table.innerHTML = html;
-        }
-
-        // Draw Spares Canvas
+        // Canvas Drawing (Decreased chart size to Medium Size)
+        const canvas = document.getElementById('sparesCanvas');
+        const ctx = canvas.getContext('2d');
         ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+        const margin = { top: 30, right: 30, bottom: 65, left: 50 };
+        const w = canvas.width - margin.left - margin.right;
+        const h = canvas.height - margin.top - margin.bottom;
+
         if (sortedSpares.length === 0) {
-            ctx.fillStyle = '#888';
+            ctx.fillStyle = '#666';
             ctx.font = '14px sans-serif';
             ctx.textAlign = 'center';
-            ctx.fillText('No spare parts data available for current selection.', canvas.width / 2, canvas.height / 2);
+            ctx.fillText('No spare parts consumption data recorded for selected filters.', canvas.width / 2, canvas.height / 2);
+            renderSparesTable([]);
             return;
         }
 
-        const paddingLeft = 50;
-        const paddingRight = 20;
-        const paddingTop = 30;
-        const paddingBottom = 70;
-        const graphWidth = canvas.width - paddingLeft - paddingRight;
-        const graphHeight = canvas.height - paddingTop - paddingBottom;
-
-        let maxQty = Math.max(...sortedSpares.map(s => s.qty), 5);
-        if (yMaxSetting !== 'auto') maxQty = Math.max(maxQty, parseInt(yMaxSetting));
+        let maxVal = yMaxVal !== 'auto' ? parseInt(yMaxVal) : Math.max(...sortedSpares.map(s => s.qty), 10);
 
         ctx.beginPath();
-        ctx.strokeStyle = '#ccc';
-        ctx.moveTo(paddingLeft, paddingTop);
-        ctx.lineTo(paddingLeft, canvas.height - paddingBottom);
-        ctx.lineTo(canvas.width - paddingRight, canvas.height - paddingBottom);
+        ctx.strokeStyle = '#e2e8f0';
+        for (let i = 0; i <= 5; i++) {
+            const y = margin.top + (h / 5) * i;
+            ctx.moveTo(margin.left, y);
+            ctx.lineTo(canvas.width - margin.right, y);
+
+            const val = Math.round(maxVal - (maxVal / 5) * i);
+            ctx.fillStyle = '#64748b';
+            ctx.font = '10px sans-serif';
+            ctx.textAlign = 'right';
+            ctx.fillText(val, margin.left - 8, y + 3);
+        }
         ctx.stroke();
 
-        const stepX = graphWidth / sortedSpares.length;
-        const barWidth = Math.min(stepX * 0.6, 40);
+        const stepX = w / Math.max(sortedSpares.length, 1);
 
-        sortedSpares.forEach((item, i) => {
-            const x = paddingLeft + i * stepX + (stepX - barWidth) / 2;
-            const barH = (item.qty / maxQty) * graphHeight;
-            const y = canvas.height - paddingBottom - barH;
+        sortedSpares.forEach((sp, idx) => {
+            const barW = Math.min(stepX * 0.6, 35);
+            const x = margin.left + idx * stepX + (stepX - barW) / 2;
+            const barH = (sp.qty / maxVal) * h;
+            const y = margin.top + h - barH;
 
-            ctx.fillStyle = '#1f4e78';
-            ctx.fillRect(x, y, barWidth, barH);
+            ctx.fillStyle = '#107c41';
+            ctx.fillRect(x, y, barW, barH);
 
-            ctx.fillStyle = '#333';
-            ctx.font = 'bold 11px sans-serif';
+            ctx.fillStyle = '#000';
+            ctx.font = 'bold 9px sans-serif';
             ctx.textAlign = 'center';
-            ctx.fillText(item.qty, x + barWidth / 2, y - 5);
+            ctx.fillText(sp.qty, x + barW / 2, y - 5);
 
             ctx.save();
-            ctx.translate(x + barWidth / 2, canvas.height - paddingBottom + 10);
-            ctx.rotate(Math.PI / 4);
-            ctx.textAlign = 'left';
+            ctx.translate(x + barW / 2, canvas.height - margin.bottom + 12);
+            ctx.rotate(-Math.PI / 6);
+            ctx.fillStyle = '#333';
             ctx.font = '10px sans-serif';
-            ctx.fillText(item.name.length > 18 ? item.name.substring(0, 16) + '...' : item.name, 0, 0);
+            ctx.textAlign = 'right';
+            ctx.fillText(sp.name.length > 18 ? sp.name.substring(0, 16) + '..' : sp.name, 0, 0);
             ctx.restore();
         });
+
+        renderSparesTable(sortedSpares);
     }
 
-    function selectAllCompareMachines(status) {
-        document.querySelectorAll('#compareMachineCheckboxes input[type="checkbox"]').forEach(cb => cb.checked = status);
+    function renderSparesTable(sparesList) {
+        const table = document.getElementById('sparesFrequencyTable');
+        if (!table) return;
+
+        let html = `<thead><tr>
+            <th>Sl.No</th>
+            <th>Spare Component Name</th>
+            <th>Total Quantities Consumed</th>
+            <th>Associated Breakdown Logs Count</th>
+        </tr></thead><tbody>`;
+
+        if (sparesList.length === 0) {
+            html += `<tr><td colspan="4" style="color:#888; padding:12px;">No spare parts data available.</td></tr>`;
+        } else {
+            sparesList.forEach((sp, idx) => {
+                html += `<tr>
+                    <td>${idx + 1}</td>
+                    <td style="text-align:left; font-weight:bold;">${sp.name}</td>
+                    <td class="bg-green">${sp.qty}</td>
+                    <td>${sp.count}</td>
+                </tr>`;
+            });
+        }
+
+        html += `</tbody>`;
+        table.innerHTML = html;
+    }
+
+    function selectAllCompareMachines(selectState) {
+        const grid = document.getElementById('compareMachineCheckboxes');
+        if (!grid) return;
+        grid.querySelectorAll('input[type="checkbox"]').forEach(cb => cb.checked = selectState);
         renderMachineComparison();
     }
 
     function renderMachineComparison() {
-        const fromDate = document.getElementById('compareFromDate')?.value;
-        const fromTime = document.getElementById('compareFromTime')?.value || '00:00';
-        const toDate = document.getElementById('compareToDate')?.value;
-        const toTime = document.getElementById('compareToTime')?.value || '23:59';
+        const fromDate = document.getElementById('compareFromDate').value;
+        const fromTime = document.getElementById('compareFromTime').value || "00:00";
+        const toDate = document.getElementById('compareToDate').value;
+        const toTime = document.getElementById('compareToTime').value || "23:59";
+        const unit = document.getElementById('compareUnitSelect').value;
+        const maxRangeVal = document.getElementById('compareMaxMinSelect').value;
 
-        const selectedMcNames = Array.from(document.querySelectorAll('#compareMachineCheckboxes input:checked')).map(cb => cb.value);
+        const grid = document.getElementById('compareMachineCheckboxes');
+        const selectedMcNames = Array.from(grid.querySelectorAll('input[type="checkbox"]:checked')).map(cb => cb.value);
 
-        const canvas = document.getElementById('compareCanvas');
-        if (!canvas) return;
-        const ctx = canvas.getContext('2d');
+        const fromDateTime = new Date(`${fromDate}T${fromTime}`);
+        const toDateTime = new Date(`${toDate}T${toTime}`);
 
-        const metrics = selectedMcNames.map(name => {
-            let mins = 0;
-            let occ = 0;
-            breakdownLogs.forEach(log => {
-                if (log.mcName.trim().toUpperCase() === name.trim().toUpperCase()) {
-                    if (fromDate && log.date < fromDate) return;
-                    if (toDate && log.date > toDate) return;
-                    mins += Number(log.lossTime) || 0;
-                    occ += 1;
-                }
-            });
-            return { name, hrs: mins / 60, occ, mins };
+        const mcDataMap = {};
+        selectedMcNames.forEach(name => {
+            mcDataMap[name] = { mins: 0, occ: 0 };
         });
 
-        // Table
-        const table = document.getElementById('compareMetricsTable');
-        if (table) {
-            let html = `<thead><tr><th>Machine Name</th><th>Total Breakdown Hours</th><th>Total Occurrences</th><th>Avg Downtime / Event (Min)</th></tr></thead><tbody>`;
-            metrics.forEach(m => {
-                const avg = m.occ > 0 ? (m.mins / m.occ).toFixed(1) : "0.0";
-                html += `<tr><td style="text-align:left; font-weight:bold;">${m.name}</td><td><b>${m.hrs.toFixed(2)} Hrs</b></td><td><b>${m.occ}</b></td><td>${avg} min</td></tr>`;
-            });
-            html += `</tbody>`;
-            table.innerHTML = html;
-        }
-
-        // Draw Canvas Chart
-        ctx.clearRect(0, 0, canvas.width, canvas.height);
-        if (metrics.length === 0) return;
-
-        const paddingLeft = 50;
-        const paddingRight = 20;
-        const paddingTop = 30;
-        const paddingBottom = 70;
-        const graphWidth = canvas.width - paddingLeft - paddingRight;
-        const graphHeight = canvas.height - paddingTop - paddingBottom;
-
-        const maxHrs = Math.max(...metrics.map(m => m.hrs), 2);
-
-        ctx.beginPath();
-        ctx.strokeStyle = '#ccc';
-        ctx.moveTo(paddingLeft, paddingTop);
-        ctx.lineTo(paddingLeft, canvas.height - paddingBottom);
-        ctx.lineTo(canvas.width - paddingRight, canvas.height - paddingBottom);
-        ctx.stroke();
-
-        const stepX = graphWidth / metrics.length;
-        const barW = Math.min(stepX * 0.5, 35);
-
-        metrics.forEach((m, i) => {
-            const x = paddingLeft + i * stepX + (stepX - barW) / 2;
-            const barH = (m.hrs / maxHrs) * graphHeight;
-            const y = canvas.height - paddingBottom - barH;
-
-            ctx.fillStyle = '#d97706';
-            ctx.fillRect(x, y, barW, barH);
-
-            ctx.fillStyle = '#333';
-            ctx.font = 'bold 10px sans-serif';
-            ctx.textAlign = 'center';
-            ctx.fillText(`${m.hrs.toFixed(1)}h`, x + barW / 2, y - 5);
-
-            ctx.save();
-            ctx.translate(x + barW / 2, canvas.height - paddingBottom + 10);
-            ctx.rotate(Math.PI / 4);
-            ctx.textAlign = 'left';
-            ctx.font = '10px sans-serif';
-            ctx.fillText(m.name, 0, 0);
-            ctx.restore();
-        });
-    }
-
-    function renderQuadrantProfiling() {
-        const mcFilter = document.getElementById('quadrantFilterMachine')?.value || '';
-        const fromDate = document.getElementById('quadrantFromDate')?.value;
-        const toDate = document.getElementById('quadrantToDate')?.value;
-        const occThresh = parseInt(document.getElementById('thresholdOcc')?.value) || 2;
-        const dtThresh = parseInt(document.getElementById('thresholdDt')?.value) || 30;
-
-        const q1List = document.getElementById('q1List');
-        const q2List = document.getElementById('q2List');
-        const q3List = document.getElementById('q3List');
-        const q4List = document.getElementById('q4List');
-
-        q1List.innerHTML = ''; q2List.innerHTML = ''; q3List.innerHTML = ''; q4List.innerHTML = '';
-        let q1Count = 0, q2Count = 0, q3Count = 0, q4Count = 0;
-
-        machineMaster.forEach(mc => {
-            if (mcFilter && mc.name.trim().toUpperCase() !== mcFilter.trim().toUpperCase()) return;
-
-            let mins = 0;
-            let occ = 0;
-            breakdownLogs.forEach(l => {
-                if (l.mcName.trim().toUpperCase() === mc.name.trim().toUpperCase()) {
-                    if (fromDate && l.date < fromDate) return;
-                    if (toDate && l.date > toDate) return;
-                    mins += Number(l.lossTime) || 0;
-                    occ += 1;
+        breakdownLogs.forEach(l => {
+            const name = l.mcName.trim().toUpperCase();
+            if (selectedMcNames.includes(name)) {
+                const logTime = l.time || "08:00";
+                const logDateTime = new Date(`${l.date}T${logTime}`);
+                if (logDateTime >= fromDateTime && logDateTime <= toDateTime) {
+                    mcDataMap[name].mins += Number(l.lossTime) || 0;
+                    mcDataMap[name].occ += 1;
                 }
-            });
-
-            const itemHtml = `
-                <div class="q-item">
-                    <span><b>${mc.name}</b></span>
-                    <span>${occ} Occ | ${mins} Mins</span>
-                </div>
-            `;
-
-            if (occ >= occThresh && mins >= dtThresh) {
-                q1List.innerHTML += itemHtml; q1Count++;
-            } else if (occ < occThresh && mins >= dtThresh) {
-                q2List.innerHTML += itemHtml; q2Count++;
-            } else if (occ >= occThresh && mins < dtThresh) {
-                q3List.innerHTML += itemHtml; q3Count++;
-            } else {
-                q4List.innerHTML += itemHtml; q4Count++;
             }
         });
 
-        document.getElementById('q1Count').innerText = q1Count;
-        document.getElementById('q2Count').innerText = q2Count;
-        document.getElementById('q3Count').innerText = q3Count;
-        document.getElementById('q4Count').innerText = q4Count;
+        // Scrollable Canvas Rendering
+        const canvas = document.getElementById('compareCanvas');
+        const ctx = canvas.getContext('2d');
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+        const margin = { top: 40, right: 60, bottom: 65, left: 60 };
+        const w = canvas.width - margin.left - margin.right;
+        const h = canvas.height - margin.top - margin.bottom;
+
+        let maxMins = 100;
+        if (maxRangeVal !== 'auto') {
+            maxMins = parseInt(maxRangeVal) * 60;
+        } else {
+            maxMins = Math.max(...Object.values(mcDataMap).map(d => d.mins), 120);
+        }
+
+        let maxOccs = Math.max(...Object.values(mcDataMap).map(d => d.occ), 5);
+
+        ctx.beginPath();
+        ctx.strokeStyle = '#e2e8f0';
+        for (let i = 0; i <= 5; i++) {
+            const y = margin.top + (h / 5) * i;
+            ctx.moveTo(margin.left, y);
+            ctx.lineTo(canvas.width - margin.right, y);
+
+            const valMin = Math.round(maxMins - (maxMins / 5) * i);
+            const valHrs = (valMin / 60).toFixed(1);
+            ctx.fillStyle = '#1f4e78';
+            ctx.font = '10px sans-serif';
+            ctx.textAlign = 'right';
+
+            if (unit === 'hrs') ctx.fillText(`${valHrs}h`, margin.left - 8, y + 3);
+            else if (unit === 'mins') ctx.fillText(`${valMin}m`, margin.left - 8, y + 3);
+            else ctx.fillText(`${valMin}m (${valHrs}h)`, margin.left - 8, y + 3);
+
+            const valOcc = Math.round(maxOccs - (maxOccs / 5) * i);
+            ctx.fillStyle = '#d9534f';
+            ctx.textAlign = 'left';
+            ctx.fillText(valOcc, canvas.width - margin.right + 8, y + 3);
+        }
+        ctx.stroke();
+
+        const count = selectedMcNames.length;
+        const stepX = count > 0 ? w / count : w;
+
+        selectedMcNames.forEach((name, idx) => {
+            const data = mcDataMap[name];
+            const barW = Math.min(stepX * 0.45, 40);
+            const x = margin.left + idx * stepX + (stepX - barW) / 2;
+
+            const barH = (data.mins / maxMins) * h;
+            const y = margin.top + h - barH;
+
+            ctx.fillStyle = '#1f4e78';
+            ctx.fillRect(x, y, barW, barH);
+
+            if (data.mins > 0) {
+                ctx.fillStyle = '#000';
+                ctx.font = 'bold 9px sans-serif';
+                ctx.textAlign = 'center';
+                const labelStr = unit === 'hrs' ? `${(data.mins/60).toFixed(1)}h` : `${data.mins}m`;
+                ctx.fillText(labelStr, x + barW / 2, y - 5);
+            }
+
+            // Draw Occurrence Points
+            const occY = margin.top + h - (data.occ / maxOccs) * h;
+            ctx.beginPath();
+            ctx.arc(x + barW / 2, occY, 4, 0, Math.PI * 2);
+            ctx.fillStyle = '#d9534f';
+            ctx.fill();
+
+            if (data.occ > 0) {
+                ctx.fillStyle = '#d9534f';
+                ctx.font = 'bold 9px sans-serif';
+                ctx.textAlign = 'center';
+                ctx.fillText(data.occ, x + barW / 2, occY - 7);
+            }
+
+            ctx.save();
+            ctx.translate(x + barW / 2, canvas.height - margin.bottom + 12);
+            ctx.rotate(-Math.PI / 6);
+            ctx.fillStyle = '#333';
+            ctx.font = '10px sans-serif';
+            ctx.textAlign = 'right';
+            ctx.fillText(name.length > 16 ? name.substring(0, 14) + '..' : name, 0, 0);
+            ctx.restore();
+        });
+
+        // Render Comparative Metrics Table
+        const table = document.getElementById('compareMetricsTable');
+        let html = `<thead><tr>
+            <th>Sl.No</th>
+            <th>Machine Name</th>
+            <th>Breakdown Loss (Mins)</th>
+            <th>Breakdown Loss (Hrs)</th>
+            <th>Breakdown Occurrences</th>
+            <th>Availability %</th>
+            <th>MTTR (Hrs)</th>
+            <th>MTBF (Hrs)</th>
+        </tr></thead><tbody>`;
+
+        selectedMcNames.forEach((name, idx) => {
+            const data = mcDataMap[name];
+            const hrs = (data.mins / 60).toFixed(2);
+            const plannedMin = 720 * 60;
+            const avail = (((plannedMin - data.mins) / plannedMin) * 100).toFixed(2);
+            const mttr = data.occ > 0 ? (data.mins / 60 / data.occ).toFixed(2) : "0.00";
+            const mtbf = data.occ > 0 ? ((720 - data.mins / 60) / data.occ).toFixed(2) : "720.00";
+
+            html += `<tr>
+                <td>${idx + 1}</td>
+                <td style="text-align:left; font-weight:bold;">${name}</td>
+                <td class="${data.mins > 0 ? 'bg-red' : ''}">${data.mins}</td>
+                <td><b>${hrs}</b></td>
+                <td class="${data.occ > 0 ? 'bg-green' : ''}">${data.occ}</td>
+                <td class="${avail >= 90 ? 'bg-green' : 'bg-red'}"><b>${avail}%</b></td>
+                <td>${mttr}</td>
+                <td>${mtbf}</td>
+            </tr>`;
+        });
+
+        html += `</tbody>`;
+        table.innerHTML = html;
+    }
+
+    function renderQuadrantProfiling() {
+        const mcFilter = document.getElementById('quadrantFilterMachine').value;
+        const fromDate = document.getElementById('quadrantFromDate').value;
+        const fromTime = document.getElementById('quadrantFromTime').value || "00:00";
+        const toDate = document.getElementById('quadrantToDate').value;
+        const toTime = document.getElementById('quadrantToTime').value || "23:59";
+        const threshOcc = parseInt(document.getElementById('thresholdOcc').value) || 2;
+        const threshDt = parseInt(document.getElementById('thresholdDt').value) || 30;
+
+        const fromDateTime = new Date(`${fromDate}T${fromTime}`);
+        const toDateTime = new Date(`${toDate}T${toTime}`);
+
+        const mcMetrics = {};
+        machineMaster.forEach(m => {
+            if (!mcFilter || m.name.trim().toUpperCase() === mcFilter.trim().toUpperCase()) {
+                mcMetrics[m.name] = { mins: 0, occ: 0, mcNo: m.mcNo };
+            }
+        });
+
+        breakdownLogs.forEach(l => {
+            const name = l.mcName.trim().toUpperCase();
+            if (mcMetrics[name]) {
+                const logTime = l.time || "08:00";
+                const logDateTime = new Date(`${l.date}T${logTime}`);
+                if (logDateTime >= fromDateTime && logDateTime <= toDateTime) {
+                    mcMetrics[name].mins += Number(l.lossTime) || 0;
+                    mcMetrics[name].occ += 1;
+                }
+            }
+        });
+
+        const q1 = [], q2 = [], q3 = [], q4 = [];
+
+        Object.keys(mcMetrics).forEach(name => {
+            const m = mcMetrics[name];
+            const item = { name, mins: m.mins, occ: m.occ, mcNo: m.mcNo };
+
+            if (m.occ >= threshOcc && m.mins >= threshDt) q1.push(item);
+            else if (m.occ < threshOcc && m.mins >= threshDt) q2.push(item);
+            else if (m.occ >= threshOcc && m.mins < threshDt) q3.push(item);
+            else q4.push(item);
+        });
+
+        document.getElementById('q1Count').innerText = q1.length;
+        document.getElementById('q2Count').innerText = q2.length;
+        document.getElementById('q3Count').innerText = q3.length;
+        document.getElementById('q4Count').innerText = q4.length;
+
+        renderQuadrantList('q1List', q1);
+        renderQuadrantList('q2List', q2);
+        renderQuadrantList('q3List', q3);
+        renderQuadrantList('q4List', q4);
+    }
+
+    function renderQuadrantList(elemId, items) {
+        const container = document.getElementById(elemId);
+        if (!container) return;
+
+        if (items.length === 0) {
+            container.innerHTML = '<span style="font-size:11px; color:#888;">No machines in this category.</span>';
+            return;
+        }
+
+        let html = '';
+        items.forEach(it => {
+            html += `
+                <div style="background:#fff; border:1px solid #ddd; padding:6px 8px; border-radius:4px; font-size:11px; display:flex; justify-content:space-between; align-items:center;">
+                    <div>
+                        <strong>${it.name}</strong> ${it.mcNo ? '<span style="color:#777;">('+it.mcNo+')</span>' : ''}
+                    </div>
+                    <div>
+                        <span style="color:#d9534f; font-weight:bold;">${it.mins} mins</span> | 
+                        <span style="color:#1f4e78; font-weight:bold;">${it.occ} occ</span>
+                    </div>
+                </div>
+            `;
+        });
+        container.innerHTML = html;
     }
 </script>
+
 </body>
 </html>
